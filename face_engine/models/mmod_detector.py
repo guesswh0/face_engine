@@ -45,7 +45,10 @@ class MMODDetector(Detector, name='mmod'):
             self._cnn_face_detector = dlib.cnn_face_detection_model_v1(
                 os.path.join(RESOURCES, "data/mmod_human_face_detector.dat"))
         except RuntimeError:
-            logging.error("Model 'mmod' not found. Use `fetch_models` and try again")
+            logging.error(
+                "Model 'mmod' not found. " +
+                "Use `fetch_models` and try again. " +
+                "To use your own plugin model call `use_plugin` method.")
 
     def detect_all(self, image):
         detections = self._cnn_face_detector(image)

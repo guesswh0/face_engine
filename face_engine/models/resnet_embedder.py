@@ -50,7 +50,9 @@ class ResNetEncoder(Embedder, name='resnet', dim=128):
                 ))
         except RuntimeError:
             logging.error(
-                "Model 'resnet' not found, use `fetch_models` and try again.")
+                "Model 'resnet' not found. " +
+                "Use `fetch_models` and try again. " +
+                "To use your own plugin model call `use_plugin` method.")
 
     def compute_embedding(self, image, bounding_box):
         bb = dlib.rectangle(bounding_box[0], bounding_box[1],
