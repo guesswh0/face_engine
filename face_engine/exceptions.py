@@ -16,10 +16,9 @@
 class FaceError(Exception):
     """Exception is raised if face not found on image"""
 
-    def __init__(self, n_faces=None, msg=None) -> None:
-        if n_faces:
-            msg = "Didn't found a face" if n_faces < 1 \
-                else "Found more than one face"
+    def __init__(self, msg=None):
+        if not msg:
+            msg = "Face not found"
         super().__init__(msg)
 
 

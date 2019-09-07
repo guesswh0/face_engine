@@ -51,7 +51,7 @@ class MMODDetector(Detector, name='mmod'):
         detections = self._cnn_face_detector(image)
         n_det = len(detections)
         if n_det < 1:
-            raise FaceError(n_det)
+            raise FaceError()
 
         img_size = np.asarray(image.shape)[0:2]
         bounding_boxes = np.empty(shape=(n_det, 4), dtype=np.uint16)
@@ -67,6 +67,6 @@ class MMODDetector(Detector, name='mmod'):
     def detect_one(self, image):
         confidences, bounding_boxes = self.detect_all(image)
         n_det = len(bounding_boxes)
-        if n_det != 1:
-            raise FaceError(n_det)
+        if n_det > 1:
+            raise FaceError('Found more than one face')
         return confidences[0], bounding_boxes[0]
