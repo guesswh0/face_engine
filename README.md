@@ -1,4 +1,4 @@
-# Face Engine - The simplest face recognition!
+# FaceEngine - The simplest face recognition!
 
 Project main purpose is to simplify work with __face recognition problem__ 
 computation core trio - *detector*, *embedder*, and *predictor*. FaceEngine 
@@ -8,9 +8,10 @@ extends facilities and adds some features.
 ## Usage
 
 #### Getting it
-To download face engine, either pull this github repo or simply use Pypi via pip:
+To download FaceEngine, either pull this github repo or simply use Pypi via pip:
 
-    $ pip install face-engine
+    $ pip3 install face-engine
+FaceEngine is supported only on Python 3.6 and above.
     
 To fetch project default models use: 
 
@@ -55,35 +56,34 @@ engine.detector = 'mmod'
     score, class_name = engine.predict(image)
     ```
 
-Pre-defined default models is used to show how to work with `FaceEngine`. 
-This models are working very good, but if you are ~~computer-vision~~ 
+Pre-defined default models are used to show how to work with FaceEngine. 
+These models are working pretty good, but if you are ~~computer-vision~~ 
 developer you probably could think of working  with your own 
-pre-trained models!? With `FaceEngine` you can easily plug your
+pre-trained models!? With FaceEngine you can easily plug your
 model in and use it. All you need to do is to implement model interface 
 `Detector`, `Embedder` or `Predictor` (see `models` package rules), `register` 
 model (import) and `create` instance of it with `use_plugin` method.
 
-How to train your own model is out of this user guide scope =), try ask to 
+How to train your own model is out of this user guide scope, try to ask 
 [@davidsandberg](https://github.com/davidsandberg) ;) 
 
 ```python
-from face_engine.models import Detector
-engine.use_plugin(Detector, name='mmod', filepath='face_engine/models/mmod_detector.py')
+engine.use_plugin(name='mmod', filepath='face_engine/models/mmod_detector.py')
 ```
 this will import all your *dependencies* and *register* your model class 
 object itself in `models` dictionary and then will *create* instance of it.   
 
-All pre-defined default models is also considered as plugin models :heavy_exclamation_mark:
+All pre-defined default models are also considered as plugin models :heavy_exclamation_mark:
 
 
 ## Notice
-There is also a few methods, but it is better if you will try figure them 
+There is also a few methods, but it is better if you will try to figure them 
 out by yourself.
 
-I didn't wrote full documentation or tutorial yet (hope doing so sooner or later), 
-that's why more detailed info on models or engine itself see docstrings.
+I didn't write full documentation or tutorial yet (hope doing so sooner or later), 
+that's why for more detailed info on models or engine itself see docstrings.
 
-Questions? Issues? feel free to [ask](https://github.com/guesswh0/face_engine/issues/new).
+Questions? Issues? Feel free to [ask](https://github.com/guesswh0/face_engine/issues/new).
 Thank you for choosing my project.
 
 ## License
