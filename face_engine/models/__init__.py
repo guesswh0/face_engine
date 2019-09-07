@@ -22,9 +22,9 @@ subclasses (#PEP487).
 import importlib
 
 
-class PluginMixin:
-    """ This mixin class defines the rules for plugin model registering and
-    instance creating for all inheriting model classes.
+class PluginModel:
+    """Plugin model base class, which defines the rules for plugin model
+    registering and instance creating for all inheriting model classes.
 
         -   all implementing plugin model classes must have `name` class
         attribute (descriptor).
@@ -63,7 +63,7 @@ class PluginMixin:
             return subclass(**kwargs)
 
 
-class Detector(PluginMixin):
+class Detector(PluginModel):
     """Human face detector object.
 
         -   bounding box format is (top, left, right, bottom)
@@ -102,7 +102,7 @@ class Detector(PluginMixin):
         raise NotImplementedError()
 
 
-class Embedder(PluginMixin):
+class Embedder(PluginModel):
     """This object calculates embedding vectors from the face containing image.
 
         -   inheriting plugin classes additionally must have `dim` class
@@ -146,7 +146,7 @@ class Embedder(PluginMixin):
         raise NotImplementedError()
 
 
-class Predictor(PluginMixin):
+class Predictor(PluginModel):
     """This object is used to make predictions, which class input face
     embeddings belongs to, with some prediction score"""
 

@@ -19,7 +19,7 @@ from skimage import io
 from skimage.transform import rescale
 
 from .exceptions import FaceError, TrainError
-from .models import Detector, Embedder, Predictor
+from .models import PluginModel, Detector, Embedder, Predictor
 
 __version__ = '1.0.0'
 
@@ -56,7 +56,7 @@ class FaceEngine:
             to import and use your own plugin model use:
                 >>>> engine = FaceEngine()
                 >>>> engine.use_plugin(
-                >>>>    Detector, 'mmod', 'face_engine/models/mmod_detector.py')
+                >>>>    'mmod', 'face_engine/models/mmod_detector.py')
 
         :param limit: is required to restrict the number of faces fed
             to predictor
@@ -148,15 +148,13 @@ class FaceEngine:
         cls = Predictor.models.get(name)
         self._predictor = Predictor.create(cls)
 
-    def use_plugin(self, model_type, name, filepath, **kwargs):
+    def use_plugin(self, name, filepath, **kwargs):
         """Used to register > create instance > set attribute for self-defined
         plugin models.
 
-        Plugin model is required to follow rules of model_type, which is
-        defined in `models` package, to make it work. See default examples in
-        models directory.
-
-        :param model_type: model type
+        To make it work, plugin model is required to follow rules of
+        corresponding model type, which is defined in `models` package.
+        See default examples in models directory.
 
         :param name: model name
         :type name: str
@@ -168,9 +166,9 @@ class FaceEngine:
             __init__ method.
         """
 
-        model_type.register(filepath, plugin=True)
-        cls = model_type.models.get(name)
-        model = model_type.create(cls, **kwargs)
+        PluginModel.register(filepath, plugin=True)
+        cls = PluginModel.models.get(name)
+        model = PluginModel.create(cls, **kwargs)
         setattr(self, cls.suffix, model)
 
     def fit(self, images, class_names, bounding_boxes=None):
