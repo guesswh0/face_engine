@@ -25,8 +25,8 @@ from face_engine import FaceEngine
 engine = FaceEngine()
 ```
 to change default model use appropriate setter method, for example to use 
-more robust face detector model `'mmod'` 
-(see `face_engine/models/mmod_detector.py`) use:
+more robust face detector model `'mmod'` (see [`face_engine/models/mmod_detector.py`](https://github.com/guesswh0/face_engine/blob/master/face_engine/models/mmod_detector.py)
+) use:
 
 ```python
 engine.detector = 'mmod'
@@ -61,8 +61,9 @@ These models are working pretty good, but if you are ~~computer-vision~~
 developer you probably could think of working  with your own 
 pre-trained models!? With FaceEngine you can easily plug your
 model in and use it. All you need to do is to implement model interface 
-`Detector`, `Embedder` or `Predictor` (see `models` package rules), `register` 
-model (import) and `create` instance of it with `use_plugin` method.
+`Detector`, `Embedder` or `Predictor` (see [models](https://github.com/guesswh0/face_engine/blob/master/face_engine/models/__init__.py) 
+package rules), `register` model (import) and `create` instance of it with 
+`use_plugin` method.
 
 How to train your own model is out of this user guide scope, try to ask 
 [@davidsandberg](https://github.com/davidsandberg) ;) 
@@ -80,12 +81,10 @@ All pre-defined default models are also considered as plugin models :heavy_excla
 There is also a few methods, but it is better if you will try to figure them 
 out by yourself.
 
-I didn't write full documentation or tutorial yet (hope doing so sooner or later), 
-that's why for more detailed info on models or engine itself see docstrings.
+I didn't wrote full documentation or tutorial yet (hope doing so sooner or later), 
+in the meantime for more detailed info on models or engine itself see docstrings.
 
 Questions? Issues? Feel free to [ask](https://github.com/guesswh0/face_engine/issues/new).
-Thank you for choosing my project.
-
 ## License
 
 Apache License Version 2.0
