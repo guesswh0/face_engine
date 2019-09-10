@@ -50,13 +50,12 @@ class FaceEngine:
 
         Examples:
             to change model to dlib mmod detector use:
-                >>>> engine = FaceEngine()
-                >>>> engine.detector = 'mmod'
+                >>> engine = FaceEngine()
+                >>> engine.detector = 'mmod'
 
             to import and use your own plugin model use:
-                >>>> engine = FaceEngine()
-                >>>> engine.use_plugin(
-                >>>>    'mmod', 'face_engine/models/mmod_detector.py')
+                >>> engine = FaceEngine()
+                >>> engine.use_plugin('mmod', 'models/mmod_detector.py')
 
         :param limit: is required to restrict the number of faces fed
             to predictor
@@ -136,7 +135,8 @@ class FaceEngine:
     def predictor(self, name):
         """Face predictor model to use:
 
-            -   'linear': linear comparing by calculating L2-norms (default)
+            -   'linear': linear comparing, by calculating `L2-norms` with
+            RBF kernel function (default)
 
         :param name: predictor model name
         :type name: str
