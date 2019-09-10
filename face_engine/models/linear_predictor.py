@@ -22,10 +22,10 @@ from face_engine.models import Predictor
 
 
 class LinearPredictor(Predictor, name='linear'):
-    """Linear predictor calculates euclidean distance (L2-norms) and
-    normalizes as exp(-x) function.
+    """Linear predictor calculates `euclidean distance` (L2-norm) and
+    applies RBF kernel function `exp(-1/2*||x-x'||^2)` with `sigma=1`.
 
-        -   output similarity score is in range (0,1).
+        -   output prediction (similarity) score is in range (0,1).
     """
 
     def __init__(self):
@@ -44,9 +44,7 @@ class LinearPredictor(Predictor, name='linear'):
         scores = np.empty(n_faces, dtype=np.float32)
         indices = np.empty(n_faces, dtype=np.uint32)
         for i, embedding in enumerate(embeddings):
-            distances = np.linalg.norm(self.embeddings - embedding, axis=1)
-            indices[i] = np.argmin(distances)
-            scores[i] = np.exp(-distances[indices[i]])
+            indices[i], scores[i] = self.compare(embedding, self.embeddings)
         return scores, self.class_names[indices]
 
     @staticmethod
@@ -66,7 +64,7 @@ class LinearPredictor(Predictor, name='linear'):
 
         distances = np.linalg.norm(target - source, axis=1)
         index = np.argmin(distances)
-        score = np.exp(-distances[index])
+        score = np.exp(-0.5 * distances[index] ** 2)
         return index, score
 
     def save(self, path):
