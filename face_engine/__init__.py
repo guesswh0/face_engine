@@ -21,7 +21,7 @@ from skimage.transform import rescale
 from .exceptions import FaceError, TrainError
 from .models import PluginModel, Detector, Embedder, Predictor
 
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 
 BASE = os.path.abspath(os.path.dirname(__file__))
 ROOT = os.path.dirname(BASE)
