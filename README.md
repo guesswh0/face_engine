@@ -1,4 +1,4 @@
-# FaceEngine - The simplest face recognition!
+# FaceEngine
 
 Project main purpose is to simplify work with __face recognition problem__ 
 computation core trio - *detector*, *embedder*, and *predictor*. FaceEngine 
@@ -65,8 +65,7 @@ model in and use it. All you need to do is to implement model interface
 package rules), `register` model (import) and `create` instance of it with 
 `use_plugin` method.
 
-How to train your own model is out of this user guide scope, try to ask 
-[@davidsandberg](https://github.com/davidsandberg) ;) 
+How to train your own model is out of this user guide scope. 
 
 ```python
 engine.use_plugin(name='mmod', filepath='face_engine/models/mmod_detector.py')
