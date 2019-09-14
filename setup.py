@@ -7,7 +7,6 @@ with open('face_engine/__init__.py', 'r') as fd:
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
                         fd.read(), re.MULTILINE).group(1)
 
-
 setup(
     name='face-engine',
     version=version,
@@ -20,9 +19,13 @@ setup(
     packages=find_packages(exclude=['tests']),
     install_requires=[
         'scikit-image',
-        'scikit-learn',
-        'dlib>=19.17',
+        'dlib>=19.17'
     ],
+    extras_require={
+        'dev': [
+            'scikit-learn'
+        ]
+    },
     entry_points={
         'console_scripts': [
             'fetch_models = fetching.fetch_models:fetch',
