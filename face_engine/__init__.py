@@ -304,7 +304,7 @@ class FaceEngine:
             bounding_box[3] = bounding_box[3] / img_size[0]
         return confidence, bounding_box
 
-    def find_faces(self, image, borders=None, scale=None, normalize=False):
+    def find_faces(self, image, roi=None, scale=None, normalize=False):
         """ Find multiple faces in the image. 'Detector's wrapping method.
             Used to find faces bounding boxes of in the image, with several
             pre and post-processing abilities.
@@ -312,9 +312,9 @@ class FaceEngine:
         :param image: RGB Image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
-        :param borders: area of interest borders
+        :param roi: region of interest
             i.e two points of rectangle (top, left, bottom, right)
-        :type borders: tuple | list
+        :type roi: tuple | list
 
         :param scale: scale image by a certain factor, value > 0
         :type scale: float
@@ -329,9 +329,9 @@ class FaceEngine:
         """
 
         img_size = np.asarray(image.shape)[0:2]
-        # crop image by borders
-        if borders:
-            image = image[borders[1]:borders[3], borders[0]:borders[2], :]
+        # crop image by region of interest
+        if roi:
+            image = image[roi[1]:roi[3], roi[0]:roi[2], :]
 
         if scale:
             rescaled_img = rescale(
@@ -350,9 +350,9 @@ class FaceEngine:
         else:
             confidences, bounding_boxes = self._detector.detect_all(image)
 
-        # adopt bounding box to original image borders
-        if borders:
-            bounding_boxes += np.array(borders[:2] * 2, dtype=np.uint16)
+        # adopt bounding box to original image size
+        if roi:
+            bounding_boxes += np.array(roi[:2] * 2, dtype=np.uint16)
 
         if normalize:
             bounding_boxes = bounding_boxes.astype(np.float32)
