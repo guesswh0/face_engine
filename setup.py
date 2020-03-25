@@ -18,8 +18,7 @@ setup(
     url="https://github.com/guesswh0/face_engine",
     packages=find_packages(exclude=['tests']),
     install_requires=[
-        'scikit-image',
-        'dlib>=19.17'
+        'scikit-image'
     ],
     extras_require={
         'dev': [
@@ -27,9 +26,12 @@ setup(
         ]
     },
     entry_points={
-        'console_scripts': [
-            'fetch_models = fetching.fetch_models:fetch',
-        ]
+        'console_scripts':
+            [
+                'fetch_images=fetching.fetch:fetch_images',
+                'fetch_models=fetching.fetch:fetch_models',
+                'fetch_all=fetching.fetch:fetch_all',
+            ]
     },
     classifiers=[
         'License :: OSI Approved :: Apache Software License',

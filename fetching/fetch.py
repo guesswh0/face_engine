@@ -18,8 +18,9 @@ import fetching
 from face_engine import RESOURCES
 
 
-def _fetch_project_images():
-    # Load images
+def fetch_images():
+    """Fetch testing images"""
+
     for fname in [
         "images/drive.jpg",
         "images/family.jpg"
@@ -27,7 +28,16 @@ def _fetch_project_images():
         fetching.get_remote_file(fname, RESOURCES)
 
 
-def _fetch_dlib_models():
+def fetch_models():
+    """Fetch default dlib models for face recognition and pip install dlib"""
+
+    try:
+        import dlib
+    except ModuleNotFoundError:
+        import subprocess
+        import sys
+        subprocess.check_call([sys.executable, "-m", "pip", "install", 'dlib'])
+
     extract_dir = os.path.join(RESOURCES, 'data')
     url_root = "http://dlib.net/files/"
     # Load dlib models
@@ -43,10 +53,10 @@ def _fetch_dlib_models():
             os.remove(filename)
 
 
-def fetch():
-    _fetch_dlib_models()
-    _fetch_project_images()
+def fetch_all():
+    fetch_models()
+    fetch_images()
 
 
 if __name__ == '__main__':
-    fetch()
+    fetch_all()
