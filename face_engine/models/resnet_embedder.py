@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import os
 
 import dlib
@@ -49,10 +48,12 @@ class ResNetEncoder(Embedder, name='resnet', dim=128):
                     "data/shape_predictor_5_face_landmarks.dat"
                 ))
         except RuntimeError:
-            logging.error(
-                "Model 'resnet' not found. " +
-                "Use `fetch_models` and try again. " +
-                "To use your own plugin model call `use_plugin` method.")
+            import logging
+            logging.getLogger().error(
+                "Embedder model 'resnet' data files not found! "
+                "Use `fetch_models` and try again."
+            )
+            raise
 
     def compute_embedding(self, image, bounding_box):
         bb = dlib.rectangle(bounding_box[0], bounding_box[1],
