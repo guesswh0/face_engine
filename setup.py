@@ -3,15 +3,19 @@ import re
 from setuptools import setup, find_packages
 
 # load version from module (without loading the whole module)
-with open('face_engine/__init__.py', 'r') as fd:
+with open('face_engine/__init__.py') as fd:
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
                         fd.read(), re.MULTILINE).group(1)
+
+with open('README.md', encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(
     name='face-engine',
     version=version,
     description='Face recognition engine',
-    long_description=__doc__,
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     license='Apache 2.0',
     author='Daniyar Kussainov',
     author_email='ohw0sseug@gmail.com',
@@ -22,7 +26,9 @@ setup(
     ],
     extras_require={
         'dev': [
-            'scikit-learn'
+            'scikit-learn',
+            'dlib~=19.0',
+            'opencv-python-headless~=3.4'
         ]
     },
     entry_points={
