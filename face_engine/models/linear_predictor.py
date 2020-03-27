@@ -17,7 +17,7 @@ import pickle
 
 import numpy as np
 
-from face_engine import TrainError
+from face_engine.exceptions import TrainError
 from face_engine.models import Predictor
 
 
@@ -68,11 +68,11 @@ class LinearPredictor(Predictor, name='linear'):
         return index, score
 
     def save(self, path):
-        name = self.name + self.suffix + '.pkl'
+        name = self.name + '.pkl'
         with open(os.path.join(path, name), 'wb') as file:
             pickle.dump(self.__dict__, file)
 
     def load(self, path):
-        name = self.name + self.suffix + '.pkl'
+        name = self.name + '.pkl'
         with open(os.path.join(path, name), 'rb') as file:
             self.__dict__.update(pickle.load(file))

@@ -17,7 +17,6 @@ import os
 import dlib
 import numpy as np
 
-from face_engine import RESOURCES
 from face_engine.exceptions import FaceError
 from face_engine.models import Detector
 
@@ -40,12 +39,15 @@ class MMODDetector(Detector, name='mmod'):
     """
 
     def __init__(self) -> None:
+        from face_engine import RESOURCES
+
         try:
             self._cnn_face_detector = dlib.cnn_face_detection_model_v1(
                 os.path.join(RESOURCES, "data/mmod_human_face_detector.dat"))
         except RuntimeError:
             import logging
-            logging.getLogger().error(
+
+            logging.getLogger(__name__).error(
                 "Detector model 'mmod' data files not found! "
                 "Use `fetch_models` and try again."
             )

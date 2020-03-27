@@ -17,7 +17,6 @@ import os
 import dlib
 import numpy as np
 
-from face_engine import RESOURCES
 from face_engine.models import Embedder
 
 
@@ -36,6 +35,8 @@ class ResNetEncoder(Embedder, name='resnet', dim=128):
     """
 
     def __init__(self) -> None:
+        from face_engine import RESOURCES
+
         try:
             self._face_encoder = dlib.face_recognition_model_v1(
                 os.path.join(
@@ -49,7 +50,8 @@ class ResNetEncoder(Embedder, name='resnet', dim=128):
                 ))
         except RuntimeError:
             import logging
-            logging.getLogger().error(
+
+            logging.getLogger(__name__).error(
                 "Embedder model 'resnet' data files not found! "
                 "Use `fetch_models` and try again."
             )
