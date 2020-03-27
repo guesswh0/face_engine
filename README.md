@@ -21,15 +21,15 @@ To fetch project default models use:
 FaceEngine is working out of the box, with pre-defined default models:
 
 ```python
-from face_engine import FaceEngine
-engine = FaceEngine()
+>>> from face_engine import FaceEngine
+>>> engine = FaceEngine()
 ```
-to change default model use appropriate setter method, for example to use 
+to change default models use appropriate setter methods, for example to use 
 more robust face detector model `'mmod'` (see [`face_engine/models/mmod_detector.py`](https://github.com/guesswh0/face_engine/blob/master/face_engine/models/mmod_detector.py)
 ) use:
 
 ```python
-engine.detector = 'mmod'
+>>> engine.detector = 'mmod'
 ```
  
  
@@ -37,44 +37,50 @@ engine.detector = 'mmod'
 
 1. prepare some dataset with image urls/paths and class_names
  
-    ```python
-    images = ['person1.jpg', 'person2.jpg', 'person3.jpg']
-    class_names = ['person1', 'person2', 'person3']
-    ```
+```python
+>>> images = ['person1.jpg', 'person2.jpg', 'person3.jpg']
+>>> class_names = ['person1', 'person2', 'person3']
+```
 
 2. fit predictor model with prepared data
 
-    ```python
-    engine.fit(images, class_names)
-    ```
+```python
+>>> engine.fit(images, class_names)
+```
 
 3. and finally make predictions on test images
 
-    ```python
-    from skimage import io
-    image = io.imread('test_image.jpg.')
-    score, class_name = engine.predict(image)
-    ```
+```python
+>>> from skimage import io
+>>> image = io.imread('test_image.jpg.')
+>>> scores, class_names = engine.predict(image)
+```
 
+### Custom models
 Pre-defined default models are used to show how to work with FaceEngine. 
-These models are working pretty good, but if you are ~~computer-vision~~ 
-developer you probably could think of working  with your own 
-pre-trained models!? With FaceEngine you can easily plug your
-model in and use it. All you need to do is to implement model interface 
+These models are working pretty good, but if you want to, you can work with your 
+own pre-trained models. FaceEngine is designed the way, when you can easily 
+plugin your own model. All you need to do is to implement model interface 
 `Detector`, `Embedder` or `Predictor` (see [models](https://github.com/guesswh0/face_engine/blob/master/face_engine/models/__init__.py) 
-package rules), `register` model (import) and `create` instance of it with 
-`use_plugin` method.
+package), and import it with either directly importing your model or adding it 
+to `PYTHONPATH` environment variable or using appropriate convenient function 
+`from face_engine.tools`. This will <ins>register</ins> your model class object itself 
+in `models` dictionary, from where it become visible.
 
-How to train your own model is out of this user guide scope. 
+To init with your own pre-trained detector use:
+```python
+>>> from my_custom_models import my_custom_detector
+>>> engine = FaceEngine(detector='custom_detector')
+```
+
+To switch to your own model use corresponding setter method:
 
 ```python
-engine.use_plugin(name='mmod', filepath='face_engine/models/mmod_detector.py')
+>>> from my_custom_models import my_custom_detector
+>>> engine.detector = 'custom_detector'
 ```
-this will import all your *dependencies* and *register* your model class 
-object itself in `models` dictionary and then will *create* instance of it.   
-
-All pre-defined default models are also considered as plugin models :heavy_exclamation_mark:
-
+ 
+How to train your own custom model is out of this user guide scope =).
 
 ## Notice
 There is also a few methods, but it is better if you will try to figure them 
