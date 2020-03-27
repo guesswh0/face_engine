@@ -12,64 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-This package implements `face recognition problem` computations core trio -
-detector, embedder and predictor as plugin based abstract classes. All three
-objects implement the same behaviour to register (import) and initialize
-subclasses (#PEP487).
-"""
+__all__ = ['models', 'Model', 'Detector', 'Embedder', 'Predictor']
 
-import importlib
+from face_engine.tools import import_submodules
+
+models = {}
+"""storage for registered model classes"""
 
 
-class PluginModel:
-    """Plugin model base class, which defines the rules for plugin model
-    registering and instance creating for all inheriting model classes.
+class Model:
+    """FaceEngine model base class. Used to register all inheriting and
+    imported subclasses (subclass registration #PEP487).
 
-        -   all implementing plugin model classes must have `name` class
-        attribute (descriptor).
+        - implementing model classes must have `name` class descriptor
+
     """
 
     name = None
     """short model name of implementing class"""
 
-    suffix = None
-    """convenient attribute, used for registering default defined models"""
-
-    models = {}
-    """plugin models dictionary, where to store registered classes"""
+    def __set_name__(self, owner, name):
+        print(self.name, owner, name)
 
     def __init_subclass__(cls, name=None, **kwargs):
-        super().__init_subclass__(**kwargs)
         if name:
             cls.name = name
-            cls.models[name] = cls
-
-    @classmethod
-    def register(cls, name, plugin=False):
-        if plugin:
-            from importlib import util
-            from pathlib import PurePosixPath
-            pps = PurePosixPath(name)
-            spec = util.spec_from_file_location(pps.stem, name)
-            module = util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-        else:
-            importlib.import_module('.' + name + cls.suffix, __name__)
-
-    @staticmethod
-    def create(subclass, **kwargs):
-        if subclass:
-            return subclass(**kwargs)
+            models[name] = cls
+            print(f"{cls.__base__.__name__} model '{name}' has been registered")
+        elif cls.__name__ in __all__:
+            cls.name = 'abstract_' + cls.__name__.lower()
+            models[cls.name] = cls
+        super().__init_subclass__(**kwargs)
 
 
-class Detector(PluginModel):
+class Detector(Model):
     """Human face detector object.
 
         -   bounding box format is (top, left, right, bottom)
     """
-
-    suffix = '_detector'
 
     def detect_all(self, image):
         """Detect all face bounding boxes in the image,
@@ -102,18 +82,15 @@ class Detector(PluginModel):
         raise NotImplementedError()
 
 
-class Embedder(PluginModel):
+class Embedder(Model):
     """This object calculates embedding vectors from the face containing image.
 
-        -   inheriting plugin classes additionally must have `dim` class
-     attribute (descriptor), which describes embedder output vector dimensions.
+        -   implementing model classes must have `dim` class descriptor
     """
 
-    suffix = '_embedder'
-
     def __init_subclass__(cls, name=None, dim=None, **kwargs):
-        super().__init_subclass__(name, **kwargs)
         cls.embedding_dim = dim
+        super().__init_subclass__(name, **kwargs)
 
     def compute_embedding(self, image, bounding_box):
         """Compute image embedding for given bounding box
@@ -146,11 +123,9 @@ class Embedder(PluginModel):
         raise NotImplementedError()
 
 
-class Predictor(PluginModel):
-    """This object is used to make predictions, which class input face
+class Predictor(Model):
+    """This object is used to make predictions, to which class input face
     embeddings belongs to, with some prediction score"""
-
-    suffix = '_predictor'
 
     def init_model(self, embedding_dim=None):
         """Initialize and build predictor model (if required).
@@ -202,3 +177,6 @@ class Predictor(PluginModel):
         """Load predictor model state from given path"""
 
         raise NotImplementedError()
+
+
+import_submodules(__file__)

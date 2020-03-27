@@ -12,20 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+__all__ = ['models', 'FaceEngine', 'RESOURCES']
+
+__version__ = '1.1.1'
+
+import logging
+from pathlib import Path
 
 import numpy as np
 from skimage import io
 from skimage.transform import rescale
 
 from .exceptions import FaceError, TrainError
-from .models import PluginModel, Detector, Embedder, Predictor
+from .models import models
 
-__version__ = '1.1.1'
+logger = logging.getLogger(__name__)
 
-BASE = os.path.abspath(os.path.dirname(__file__))
-ROOT = os.path.dirname(BASE)
-RESOURCES = os.path.join(BASE, 'resources')
+RESOURCES = Path(__file__).parent / 'resources'
 
 
 class FaceEngine:
@@ -37,36 +40,54 @@ class FaceEngine:
     furthermore extends some features.
 
     FaceEngine is working out of the box, with pre-defined default models. But
-    it is possible (and sometimes required) to use your own models for detector,
-    embedder or predictor. FaceEngine is designed the way, when you can easily
-    plugin your own model. All you need to do is to implement model interfaces
-    Detector, Embedder or Predictor (see `models` package), `register`
-    model (import) and `create` instance of it with `use_plugin` method.
+    if you want to, you can work with your own pre-trained models for detector,
+    embedder or predictor. All you need to do is to implement model interfaces
+    Detector, Embedder or Predictor (see `models` package), and "register" it,
+    by importing your module or adding it to `PYTHONPATH` environment variable
+    or using appropriate convenient function `from face_engine.tools`.
+
+    From here you can use your model just by passing model name with
+    corresponding keyword argument of `__init__` method or setup it later by
+    calling corresponding setter method of FaceEngine object with model name
+    argument.
+
+    Examples:
+        To change model to dlib 'mmod' detector use:
+            >>> from face_engine import FaceEngine
+            >>> engine = FaceEngine()
+            >>> engine.detector = 'mmod'
+
+        To switch to your own model use corresponding setter method:
+            >>> from my_custom_models import my_custom_detector
+            >>> engine.detector = 'custom_detector'
+
+        To init with your own pre-trained detector use:
+            >>> from my_custom_models import my_custom_detector
+            >>> engine = FaceEngine(detector='custom_detector')
+
+
+    Keyword arguments:
+        :param detector: face detector model to use
+        :type detector: str
+
+        :param embedder: face embedder model to use
+        :type embedder: str
+
+        :param predictor: face predictor model to use
+        :type predictor: str
+
+        :param limit: limit number of faces fed to predictor
+        :type limit: int
     """
 
-    def __init__(self, limit=1000):
-        """ All models is defined by their default values, to change model
-        use corresponding setter method.
+    def __init__(self, **kwargs):
+        """Create new FaceEngine instance"""
 
-        Examples:
-            to change model to dlib mmod detector use:
-                >>> engine = FaceEngine()
-                >>> engine.detector = 'mmod'
-
-            to import and use your own plugin model use:
-                >>> engine = FaceEngine()
-                >>> engine.use_plugin('mmod', 'models/mmod_detector.py')
-
-        :param limit: is required to restrict the number of faces fed
-            to predictor
-        :type limit: int
-
-        """
-        self.limit = limit
+        self.limit = kwargs.get('limit', 1000)
         # computation core trio
-        self.detector = None
-        self.embedder = None
-        self.predictor = None
+        self.detector = kwargs.get('detector')
+        self.embedder = kwargs.get('embedder')
+        self.predictor = kwargs.get('predictor')
         # keep last fitted number of identities and samples
         self.n_identities = 0
         self.n_samples = 0
@@ -93,9 +114,11 @@ class FaceEngine:
 
         if not name:
             name = 'hog'
-        Detector.register(name)
-        cls = Detector.models.get(name)
-        self._detector = Detector.create(subclass=cls)
+        if name not in models:
+            logger.warning("Detector model '%s' not found!", name)
+            name = 'abstract_detector'
+        model = models.get(name)
+        self._detector = model()
 
     @property
     def embedder(self):
@@ -118,9 +141,11 @@ class FaceEngine:
 
         if not name:
             name = 'resnet'
-        Embedder.register(name)
-        cls = Embedder.models.get(name)
-        self._embedder = Embedder.create(subclass=cls)
+        if name not in models:
+            logger.warning("Embedder model '%s' not found!", name)
+            name = 'abstract_embedder'
+        model = models.get(name)
+        self._embedder = model()
 
     @property
     def predictor(self):
@@ -144,32 +169,11 @@ class FaceEngine:
 
         if not name:
             name = 'linear'
-        Predictor.register(name)
-        cls = Predictor.models.get(name)
-        self._predictor = Predictor.create(cls)
-
-    def use_plugin(self, name, filepath, **kwargs):
-        """Used to register > create instance > set attribute for self-defined
-        plugin models.
-
-        To make it work, plugin model is required to follow rules of
-        corresponding model type, which is defined in `models` package.
-        See default examples in models directory.
-
-        :param name: model name
-        :type name: str
-
-        :param filepath: absolute or relative filepath to plugin model file
-        :type filepath: str
-
-        :param kwargs: additional kwargs required to pass to the plugin model
-            __init__ method.
-        """
-
-        PluginModel.register(filepath, plugin=True)
-        cls = PluginModel.models.get(name)
-        model = PluginModel.create(cls, **kwargs)
-        setattr(self, cls.suffix, model)
+        if name not in models:
+            logger.warning("Predictor model '%s' not found!", name)
+            name = 'abstract_predictor'
+        model = models.get(name)
+        self._predictor = model()
 
     def fit(self, images, class_names, bounding_boxes=None):
         """Fit face predictor model with given images for given class names.
@@ -382,7 +386,6 @@ class FaceEngine:
         """Load model state - helper method"""
 
         import pickle
-        from pathlib import PurePosixPath
 
         with open(filename, 'rb') as file:
             model_state = pickle.load(file)
@@ -391,14 +394,13 @@ class FaceEngine:
         self.embedder = model_state['embedder']
         self.predictor = model_state['predictor']
 
-        pps = PurePosixPath(filename)
-        self._predictor.load(str(pps.parent))
+        path = Path(filename)
+        self._predictor.load(str(path.parent))
 
     def save(self, filename):
         """Save model state - helper method"""
 
         import pickle
-        from pathlib import PurePosixPath
 
         _copy = self.__dict__.copy()
         # cleanup and reassign models by their names
@@ -410,7 +412,7 @@ class FaceEngine:
         _copy['predictor'] = self.predictor
 
         # save
-        pps = PurePosixPath(filename)
-        self._predictor.save(str(pps.parent))
+        path = Path(filename)
+        self._predictor.save(str(path.parent))
         with open(filename, 'wb') as file:
             pickle.dump(_copy, file)
