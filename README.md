@@ -1,9 +1,9 @@
 # FaceEngine
 
 Project main purpose is to simplify work with __face recognition problem__ 
-computation core trio - *detector*, *embedder*, and *predictor*. FaceEngine 
+computation core trio - _detector_, _embedder(encoder)_, and _predictor_. FaceEngine 
 combines all of them in one interface model to simplify usage and furthermore 
-extends facilities and adds some features.
+extends facilities.
 
 ## Usage
 
@@ -16,6 +16,8 @@ FaceEngine is supported only on Python 3.6 and above.
 To fetch project default models use: 
 
     $ fetch_models
+    
+Default models requires you to install [dlib](http://dlib.net/compile.html) :heavy_exclamation_mark:
 
 #### Using it:
 FaceEngine is working out of the box, with pre-defined default models:
@@ -24,8 +26,8 @@ FaceEngine is working out of the box, with pre-defined default models:
 >>> from face_engine import FaceEngine
 >>> engine = FaceEngine()
 ```
-to change default models use appropriate setter methods, for example to use 
-more robust face detector model `'mmod'` (see [`face_engine/models/mmod_detector.py`](https://github.com/guesswh0/face_engine/blob/master/face_engine/models/mmod_detector.py)
+to change models use appropriate setter methods, for example to use 
+more robust dlib face detector model `'mmod'` (see [`face_engine/models/mmod_detector.py`](https://github.com/guesswh0/face_engine/blob/master/face_engine/models/mmod_detector.py)
 ) use:
 
 ```python
@@ -58,14 +60,17 @@ more robust face detector model `'mmod'` (see [`face_engine/models/mmod_detector
 
 ### Custom models
 Pre-defined default models are used to show how to work with FaceEngine. 
-These models are working pretty good, but if you want to, you can work with your 
-own pre-trained models. FaceEngine is designed the way, when you can easily 
-plugin your own model. All you need to do is to implement model interface 
+These models are working pretty well, but if you want to, you can work with your 
+own _custom pre-trained models_. 
+All you need to do is to implement model interface 
 `Detector`, `Embedder` or `Predictor` (see [models](https://github.com/guesswh0/face_engine/blob/master/face_engine/models/__init__.py) 
 package), and import it with either directly importing your model or adding it 
 to `PYTHONPATH` environment variable or using appropriate convenient function 
-`from face_engine.tools`. This will <ins>register</ins> your model class object itself 
+from `face_engine.tools`. This will register your model class object itself 
 in `models` dictionary, from where it become visible.
+ 
+FaceEngine models used to register all inheriting imported subclasses 
+(subclass registration [#PEP487](https://www.python.org/dev/peps/pep-0487/)).  
 
 To init with your own pre-trained detector use:
 ```python
