@@ -29,14 +29,7 @@ def fetch_images():
 
 
 def fetch_models():
-    """Fetch default dlib models for face recognition and pip install dlib"""
-
-    try:
-        import dlib
-    except ModuleNotFoundError:
-        import subprocess
-        import sys
-        subprocess.check_call([sys.executable, "-m", "pip", "install", 'dlib'])
+    """Fetch default dlib models"""
 
     extract_dir = os.path.join(RESOURCES, 'data')
     url_root = "http://dlib.net/files/"
