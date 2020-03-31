@@ -38,7 +38,6 @@ class Model:
         if name:
             cls.name = name
             models[name] = cls
-            print(f"{cls.__base__.__name__} model '{name}' has been registered")
         elif cls.__name__ in __all__:
             cls.name = 'abstract_' + cls.__name__.lower()
             models[cls.name] = cls
