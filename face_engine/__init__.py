@@ -28,7 +28,7 @@ from .models import models
 
 logger = logging.getLogger(__name__)
 
-RESOURCES = Path(__file__).parent / 'resources'
+RESOURCES = Path(__file__).parent.parent / 'resources'
 
 
 class FaceEngine:
