@@ -14,7 +14,7 @@
 
 __all__ = ['models', 'FaceEngine', 'RESOURCES']
 
-__version__ = '1.2.2'
+__version__ = '1.2.3'
 
 import logging
 from pathlib import Path
