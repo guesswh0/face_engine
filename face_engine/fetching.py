@@ -1,16 +1,30 @@
+# Copyright 2020 Daniyar Kussainov
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
-from pathlib import Path
 from urllib.request import urlretrieve
 
 import tqdm
 
-RESOURCES = Path(__file__).parent / 'resources'
+RESOURCES = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), 'resources'))
 
 
 def fetch_images():
     """Fetch test images"""
 
-    extract_dir = RESOURCES / 'images'
+    extract_dir = os.path.join(RESOURCES, 'images')
     # make sure the dir exists
     if not os.path.isdir(extract_dir):
         os.makedirs(os.path.abspath(extract_dir))
@@ -21,7 +35,9 @@ def fetch_images():
         "drive.jpg",
         "family.jpg",
         'bubbles1.jpg',
-        'bubbles2.jpg'
+        'bubbles2.jpg',
+        'cat.jpg',
+        'dog.jpg'
     ]:
         # check if files exists
         file = os.path.join(extract_dir, name)
@@ -37,7 +53,7 @@ def fetch_images():
 def fetch_models():
     """Fetch default dlib models"""
 
-    extract_dir = RESOURCES / 'data'
+    extract_dir = os.path.join(RESOURCES, 'data')
     # make sure the dir exists
     if not os.path.isdir(extract_dir):
         os.makedirs(os.path.abspath(extract_dir))
@@ -109,10 +125,13 @@ def unpack_archive(filename, extract_dir=None):
 def _unpack_bz2(filename, extract_dir):
     import bz2
 
-    filename = Path(filename)
-    if not isinstance(extract_dir, Path):
-        extract_dir = Path(extract_dir)
     with open(filename, 'rb') as archive:
         data = bz2.decompress(archive.read())
-        with open(extract_dir / filename.stem, 'wb') as file:
+        with open(os.path.join(extract_dir, os.path.basename(filename)[:-4]),
+                  'wb') as file:
             file.write(data)
+
+
+if __name__ == '__main__':
+    fetch_models()
+    fetch_images()

@@ -1,4 +1,4 @@
-# Copyright 2019 Daniyar Kussainov
+# Copyright 2020 Daniyar Kussainov
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -47,7 +47,6 @@ class HOGDetector(Detector, name='hog'):
 
     def detect_one(self, image):
         _, bounding_boxes = self.detect_all(image)
-        n_det = len(bounding_boxes)
-        if n_det > 1:
-            raise FaceError('Found more than one face')
+        # dlib bounding boxes are all equal sized
+        # returning first face bounding_box
         return None, bounding_boxes[0]

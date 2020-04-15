@@ -1,4 +1,4 @@
-# Copyright 2019 Daniyar Kussainov
+# Copyright 2020 Daniyar Kussainov
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ import os
 import dlib
 import numpy as np
 
+from face_engine import logger, RESOURCES
 from face_engine.exceptions import FaceError
 from face_engine.models import Detector
 
@@ -39,15 +40,11 @@ class MMODDetector(Detector, name='mmod'):
     """
 
     def __init__(self) -> None:
-        from face_engine import RESOURCES
-
         try:
             self._cnn_face_detector = dlib.cnn_face_detection_model_v1(
                 os.path.join(RESOURCES, "data/mmod_human_face_detector.dat"))
         except RuntimeError:
-            import logging
-
-            logging.getLogger(__name__).error(
+            logger.error(
                 "Detector model 'mmod' data files not found! "
                 "Use `fetch_models` and try again."
             )
@@ -72,7 +69,6 @@ class MMODDetector(Detector, name='mmod'):
 
     def detect_one(self, image):
         confidences, bounding_boxes = self.detect_all(image)
-        n_det = len(bounding_boxes)
-        if n_det > 1:
-            raise FaceError('Found more than one face')
+        # dlib bounding boxes are all equal sized
+        # returning first face bounding_box
         return confidences[0], bounding_boxes[0]
