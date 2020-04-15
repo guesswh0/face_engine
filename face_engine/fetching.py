@@ -21,7 +21,9 @@ def fetch_images():
         "drive.jpg",
         "family.jpg",
         'bubbles1.jpg',
-        'bubbles2.jpg'
+        'bubbles2.jpg',
+        'cat.jpg',
+        'dog.jpg'
     ]:
         # check if files exists
         file = os.path.join(extract_dir, name)
@@ -114,3 +116,8 @@ def _unpack_bz2(filename, extract_dir):
         with open(os.path.join(extract_dir, os.path.basename(filename)[:-4]),
                   'wb') as file:
             file.write(data)
+
+
+if __name__ == '__main__':
+    fetch_models()
+    fetch_images()
