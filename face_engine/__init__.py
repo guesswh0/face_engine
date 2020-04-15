@@ -315,8 +315,8 @@ class FaceEngine:
         :param image: RGB Image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
-        :param roi: region of interest
-            i.e two points of rectangle (top, left, bottom, right)
+        :param roi: region of interest, format (left, top, right, bottom)
+            i.e two points of rectangle
         :type roi: tuple | list
 
         :param scale: scale image by a certain factor, value > 0

@@ -47,7 +47,7 @@ class Model:
 class Detector(Model):
     """Human face detector object.
 
-        -   bounding box format is (top, left, right, bottom)
+        -   bounding box format is (left, top, right, bottom)
     """
 
     def detect_all(self, image):
@@ -133,7 +133,6 @@ class Predictor(Model):
         :param embedding_dim: optional
         :type embedding_dim: int
         """
-        pass
 
     def fit(self, embeddings, class_names):
         """Fit predictor with given embeddings for given class names
