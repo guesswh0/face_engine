@@ -21,7 +21,6 @@ setup(
     author_email='ohw0sseug@gmail.com',
     url="https://github.com/guesswh0/face_engine",
     packages=find_packages(exclude=['tests']),
-    py_modules=['fetching'],
     install_requires=[
         'scikit-image',
         'numpy',
@@ -37,8 +36,8 @@ setup(
     entry_points={
         'console_scripts':
             [
-                'fetch_images=fetching:fetch_images',
-                'fetch_models=fetching:fetch_models'
+                'fetch_images=face_engine.fetching:fetch_images',
+                'fetch_models=face_engine.fetching:fetch_models'
             ]
     },
     classifiers=[
