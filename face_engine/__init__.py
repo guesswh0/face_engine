@@ -20,8 +20,7 @@ import logging
 import os
 
 import numpy as np
-from skimage import io
-from skimage.transform import rescale
+from PIL import Image
 
 from .exceptions import FaceError, TrainError
 from .models import models
@@ -209,13 +208,13 @@ class FaceEngine:
 
         if bounding_boxes:
             for image, bb in zip(images, bounding_boxes):
-                img = io.imread(image)
+                img = np.asarray(Image.open(image))
                 embedding = self._embedder.compute_embedding(img, bb)
                 embeddings.append(embedding)
             targets = class_names
         else:
             for image, target in zip(images, class_names):
-                img = io.imread(image)
+                img = np.asarray(Image.open(image))
                 try:
                     _, bb = self._detector.detect_one(img)
                     embedding = self._embedder.compute_embedding(img, bb)
@@ -287,13 +286,12 @@ class FaceEngine:
 
         img_size = np.asarray(image.shape)[0:2]
         if scale:
-            rescaled_img = rescale(
-                image, (scale, scale), preserve_range=True, multichannel=True
-            ).astype(np.uint8)
-            # detect and scale back
+            rescaled_img = np.uint8(
+                Image.fromarray(image).resize(img_size * scale))
             confidence, bounding_box = self._detector.detect_one(rescaled_img)
+            # scale bounding_box to original image size
             bounding_box = (bounding_box / scale).astype(np.uint16)
-            # just in case bind to image size
+            # bind to image size (just in case)
             bounding_box[0] = np.maximum(bounding_box[0], 0)
             bounding_box[1] = np.maximum(bounding_box[1], 0)
             bounding_box[2] = np.minimum(bounding_box[2], img_size[1])
@@ -339,15 +337,14 @@ class FaceEngine:
             image = image[roi[1]:roi[3], roi[0]:roi[2], :]
 
         if scale:
-            rescaled_img = rescale(
-                image, (scale, scale), preserve_range=True, multichannel=True
-            ).astype(np.uint8)
+            rescaled_img = np.uint8(
+                Image.fromarray(image).resize(img_size * scale))
 
-            # detect and scale back
             confidences, bounding_boxes = \
                 self._detector.detect_all(rescaled_img)
+            # scale bounding_boxes to original image size
             bounding_boxes = (bounding_boxes / scale).astype(np.uint16)
-            # just in case bind to image size
+            # bind to image size (just in case)
             bounding_boxes[:, 0] = np.maximum(bounding_boxes[:, 0], 0)
             bounding_boxes[:, 1] = np.maximum(bounding_boxes[:, 1], 0)
             bounding_boxes[:, 2] = np.minimum(bounding_boxes[:, 2], img_size[1])
