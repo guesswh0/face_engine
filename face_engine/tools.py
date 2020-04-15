@@ -19,7 +19,7 @@ def import_module(filepath):
         module = util.module_from_spec(spec)
         spec.loader.exec_module(module)
     except ImportError as e:
-        logger.warning("Module '%s' has not been imported: %s", path.stem, e)
+        logger.info("Module '%s' has not been imported: %s", path.stem, e)
 
 
 def import_submodules(filepath):
