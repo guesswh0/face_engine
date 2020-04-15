@@ -47,7 +47,6 @@ class HOGDetector(Detector, name='hog'):
 
     def detect_one(self, image):
         _, bounding_boxes = self.detect_all(image)
-        n_det = len(bounding_boxes)
-        if n_det > 1:
-            raise FaceError('Found more than one face')
+        # dlib bounding boxes are all equal sized
+        # returning first face bounding_box
         return None, bounding_boxes[0]
