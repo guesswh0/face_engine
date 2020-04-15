@@ -14,7 +14,7 @@
 
 __all__ = ['__version__', 'logger', 'RESOURCES', 'FaceEngine', 'models']
 
-__version__ = '1.3.0-dev'
+__version__ = '1.3.0'
 
 import logging
 import os
