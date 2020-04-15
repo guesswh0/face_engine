@@ -364,14 +364,30 @@ class FaceEngine:
             bounding_boxes[:, 3] = bounding_boxes[:, 3] / img_size[0]
         return confidences, bounding_boxes
 
-    def compute_embeddings(self, image, bounding_boxes):
-        """`Embedder`s wrapping method. Used to compute
-        image embeddings for given bounding boxes.
+    def compute_embedding(self, image, bounding_box):
+        """Embedders wrapping method.
+        Compute image embedding for given bounding box.
 
         :param image: RGB Image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
-        :param bounding_boxes: bounding boxes
+        :param bounding_box: face bounding box
+        :type bounding_box: list | numpy.ndarray
+
+        :returns: embedding vector
+        :rtype: numpy.ndarray
+        """
+
+        return self._embedder.compute_embedding(image, bounding_box)
+
+    def compute_embeddings(self, image, bounding_boxes):
+        """Embedders wrapping method.
+        Compute image embeddings for given bounding boxes.
+
+        :param image: RGB Image with shape (rows, cols, 3)
+        :type image: numpy.ndarray
+
+        :param bounding_boxes: face bounding boxes
         :type bounding_boxes: numpy.ndarray
 
         :returns: array of embedding vectors with shape (n_faces, embedding_dim)
