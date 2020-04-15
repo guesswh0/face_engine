@@ -53,8 +53,9 @@ more robust dlib face detector model `'mmod'` (see [`face_engine/models/mmod_det
 3. and finally make predictions on test images
 
 ```python
->>> from skimage import io
->>> image = io.imread('test_image.jpg.')
+>>> import numpy as np
+>>> from PIL import Image
+>>> image = np.asarray(Image.open('test_image.jpg.'))
 >>> scores, class_names = engine.predict(image)
 ```
 
@@ -99,7 +100,7 @@ Questions? Issues? Feel free to [ask](https://github.com/guesswh0/face_engine/is
 
 Apache License Version 2.0
 
-Copyright 2019 Daniyar Kussainov
+Copyright 2020 Daniyar Kussainov
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
