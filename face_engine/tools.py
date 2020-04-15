@@ -1,9 +1,7 @@
-import logging
-import os
 from importlib import util
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+from . import logger
 
 
 def import_module(filepath):

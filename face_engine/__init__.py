@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['models', 'FaceEngine', 'RESOURCES']
+__all__ = ['__version__', 'logger', 'RESOURCES', 'FaceEngine', 'models']
 
 __version__ = '1.3.0-dev'
 
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 RESOURCES = os.path.abspath(
     os.path.join(os.path.dirname(__file__), 'resources'))

@@ -17,6 +17,7 @@ import os
 import dlib
 import numpy as np
 
+from face_engine import logger, RESOURCES
 from face_engine.models import Embedder
 
 
@@ -26,7 +27,6 @@ class ResNetEncoder(Embedder, name='resnet', dim=128):
         -   face alignment pre-processing used with 5 point shape_predictor.
 
     References:
-
         [1]  http://dlib.net/python/index.html
 
         [2] http://dlib.net/files/dlib_face_recognition_resnet_model_v1.dat.bz2
@@ -35,8 +35,6 @@ class ResNetEncoder(Embedder, name='resnet', dim=128):
     """
 
     def __init__(self) -> None:
-        from face_engine import RESOURCES
-
         try:
             self._face_encoder = dlib.face_recognition_model_v1(
                 os.path.join(
@@ -49,9 +47,7 @@ class ResNetEncoder(Embedder, name='resnet', dim=128):
                     "data/shape_predictor_5_face_landmarks.dat"
                 ))
         except RuntimeError:
-            import logging
-
-            logging.getLogger(__name__).error(
+            logger.error(
                 "Embedder model 'resnet' data files not found! "
                 "Use `fetch_models` and try again."
             )

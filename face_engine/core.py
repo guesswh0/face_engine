@@ -1,13 +1,11 @@
-import logging
 import os
 
 import numpy as np
 from PIL import Image
 
+from . import logger
 from .exceptions import FaceError, TrainError
 from .models import models
-
-logger = logging.getLogger(__name__)
 
 
 class FaceEngine:
