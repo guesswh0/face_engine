@@ -14,10 +14,10 @@
 
 __all__ = ['models', 'FaceEngine', 'RESOURCES']
 
-__version__ = '1.2.3'
+__version__ = '1.3.0-dev'
 
 import logging
-from pathlib import Path
+import os
 
 import numpy as np
 from skimage import io
@@ -28,7 +28,8 @@ from .models import models
 
 logger = logging.getLogger(__name__)
 
-RESOURCES = Path(__file__).parent.parent / 'resources'
+RESOURCES = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), 'resources'))
 
 
 class FaceEngine:
@@ -394,8 +395,8 @@ class FaceEngine:
         self.embedder = model_state['embedder']
         self.predictor = model_state['predictor']
 
-        path = Path(filename)
-        self._predictor.load(str(path.parent))
+        # load predictor state
+        self._predictor.load(os.path.dirname(filename))
 
     def save(self, filename):
         """Save model state - helper method"""
@@ -411,8 +412,7 @@ class FaceEngine:
         del _copy['_predictor']
         _copy['predictor'] = self.predictor
 
-        # save
-        path = Path(filename)
-        self._predictor.save(str(path.parent))
+        # save predictor state
+        self._predictor.save(os.path.dirname(filename))
         with open(filename, 'wb') as file:
             pickle.dump(_copy, file)
