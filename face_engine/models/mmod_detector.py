@@ -15,7 +15,6 @@
 import os
 
 import dlib
-import numpy as np
 
 from face_engine import logger, RESOURCES
 from face_engine.exceptions import FaceError
@@ -54,17 +53,17 @@ class MMODDetector(Detector, name='mmod'):
         detections = self._cnn_face_detector(image)
         n_det = len(detections)
         if n_det < 1:
-            raise FaceError()
+            raise FaceError
 
-        img_size = np.asarray(image.shape)[0:2]
-        bounding_boxes = np.empty(shape=(n_det, 4), dtype=np.uint16)
-        confidence_scores = np.empty(n_det, dtype=np.float32)
-        for i, det in enumerate(detections):
-            bounding_boxes[i, 0] = np.maximum(det.rect.left(), 0)
-            bounding_boxes[i, 1] = np.maximum(det.rect.top(), 0)
-            bounding_boxes[i, 2] = np.minimum(det.rect.right(), img_size[1])
-            bounding_boxes[i, 3] = np.minimum(det.rect.bottom(), img_size[0])
-            confidence_scores[i] = det.confidence
+        height, width = image.shape[0:2]
+        bounding_boxes = list()
+        confidence_scores = list()
+        for det in detections:
+            bounding_boxes.append((max(det.rect.left(), 0),
+                                   max(det.rect.top(), 0),
+                                   min(det.rect.right(), width),
+                                   min(det.rect.bottom(), height)))
+            confidence_scores.append(det.confidence)
         return confidence_scores, bounding_boxes
 
     def detect_one(self, image):

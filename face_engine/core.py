@@ -186,7 +186,7 @@ class FaceEngine:
         :type class_names: list | numpy.ndarray
 
         :param bounding_boxes: sequence of bounding boxes
-        :type bounding_boxes: list | numpy.ndarray
+        :type bounding_boxes: list[tuple]
 
         :returns: self
 
@@ -270,44 +270,43 @@ class FaceEngine:
         :param normalize: normalize output bounding box
 
         :returns confidence score and bounding box
-        :rtype tuple[numpy.ndarray, numpy.ndarray]
+        :rtype tuple(float, tuple)
 
         :raises FaceError: if there is no face in the image
         """
 
-        img_size = np.asarray(image.shape)[0:2]
+        # original image height and width
+        height, width = image.shape[0:2]
+
         if scale:
-            rescaled_img = np.uint8(
-                Image.fromarray(image).resize(img_size * scale))
-            confidence, bounding_box = self._detector.detect_one(rescaled_img)
+            size = (int(width * scale), int(height * scale))
+            image = np.uint8(Image.fromarray(image).resize(size))
+            confidence, bounding_box = self._detector.detect_one(image)
             # scale bounding_box to original image size
-            bounding_box = (bounding_box / scale).astype(np.uint16)
-            # bind to image size (just in case)
-            bounding_box[0] = np.maximum(bounding_box[0], 0)
-            bounding_box[1] = np.maximum(bounding_box[1], 0)
-            bounding_box[2] = np.minimum(bounding_box[2], img_size[1])
-            bounding_box[3] = np.minimum(bounding_box[3], img_size[0])
+            bounding_box = (max(bounding_box[0] // scale, 0),
+                            max(bounding_box[1] // scale, 0),
+                            min(bounding_box[2] // scale, width),
+                            min(bounding_box[3] // scale, height))
         else:
             confidence, bounding_box = self._detector.detect_one(image)
 
         if normalize:
-            bounding_box = bounding_box.astype(np.float32)
-            bounding_box[0] = bounding_box[0] / img_size[1]
-            bounding_box[1] = bounding_box[1] / img_size[0]
-            bounding_box[2] = bounding_box[2] / img_size[1]
-            bounding_box[3] = bounding_box[3] / img_size[0]
+            bounding_box = (bounding_box[0] / width,
+                            bounding_box[1] / height,
+                            bounding_box[2] / width,
+                            bounding_box[3] / height)
         return confidence, bounding_box
 
     def find_faces(self, image, roi=None, scale=None, normalize=False):
-        """ Find multiple faces in the image. 'Detector's wrapping method.
-            Used to find faces bounding boxes of in the image, with several
-            pre and post-processing abilities.
+        """Find multiple faces in the image. Detector's wrapping method.
+        Used to find faces bounding boxes of in the image, with several
+        pre and post-processing abilities.
 
         :param image: RGB Image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
-        :param roi: region of interest, format (left, top, right, bottom)
-            i.e two points of rectangle
+        :param roi: region of interest rectangle,
+            format (left, upper, right, lower)
         :type roi: tuple | list
 
         :param scale: scale image by a certain factor, value > 0
@@ -317,42 +316,49 @@ class FaceEngine:
         :type normalize: bool
 
         :returns: confidence scores and bounding boxes
-        :rtype tuple[numpy.ndarray, numpy.ndarray]
+        :rtype tuple(list, list[tuple])
 
         :raises FaceError: if there is no faces in the image
         """
 
-        img_size = np.asarray(image.shape)[0:2]
+        # original image height and width
+        height, width = image.shape[0:2]
+
         # crop image by region of interest
         if roi:
             image = image[roi[1]:roi[3], roi[0]:roi[2], :]
 
         if scale:
-            rescaled_img = np.uint8(
-                Image.fromarray(image).resize(img_size * scale))
-
-            confidences, bounding_boxes = \
-                self._detector.detect_all(rescaled_img)
-            # scale bounding_boxes to original image size
-            bounding_boxes = (bounding_boxes / scale).astype(np.uint16)
-            # bind to image size (just in case)
-            bounding_boxes[:, 0] = np.maximum(bounding_boxes[:, 0], 0)
-            bounding_boxes[:, 1] = np.maximum(bounding_boxes[:, 1], 0)
-            bounding_boxes[:, 2] = np.minimum(bounding_boxes[:, 2], img_size[1])
-            bounding_boxes[:, 3] = np.minimum(bounding_boxes[:, 3], img_size[0])
+            h, w = image.shape[0:2]
+            size = (int(w * scale), int(h * scale))
+            image = np.uint8(Image.fromarray(image).resize(size))
+            confidences, bounding_boxes = self._detector.detect_all(image)
+            # scale back bounding_boxes to image size
+            bounding_boxes = [(
+                max(int(bounding_box[0] / scale), 0),
+                max(int(bounding_box[1] / scale), 0),
+                min(int(bounding_box[2] / scale), w),
+                min(int(bounding_box[3] / scale), h))
+                for bounding_box in bounding_boxes]
         else:
             confidences, bounding_boxes = self._detector.detect_all(image)
 
         # adopt bounding box to original image size
         if roi:
-            bounding_boxes += np.array(roi[:2] * 2, dtype=np.uint16)
+            from operator import add
+
+            roi = roi[:2] * 2
+            bounding_boxes = [
+                tuple(map(add, bounding_box, roi))
+                for bounding_box in bounding_boxes]
 
         if normalize:
-            bounding_boxes = bounding_boxes.astype(np.float32)
-            bounding_boxes[:, 0] = bounding_boxes[:, 0] / img_size[1]
-            bounding_boxes[:, 1] = bounding_boxes[:, 1] / img_size[0]
-            bounding_boxes[:, 2] = bounding_boxes[:, 2] / img_size[1]
-            bounding_boxes[:, 3] = bounding_boxes[:, 3] / img_size[0]
+            bounding_boxes = [(
+                bounding_box[0] / width,
+                bounding_box[1] / height,
+                bounding_box[2] / width,
+                bounding_box[3] / height)
+                for bounding_box in bounding_boxes]
         return confidences, bounding_boxes
 
     def compute_embedding(self, image, bounding_box):
@@ -363,7 +369,7 @@ class FaceEngine:
         :type image: numpy.ndarray
 
         :param bounding_box: face bounding box
-        :type bounding_box: list | numpy.ndarray
+        :type bounding_box: tuple
 
         :returns: embedding vector
         :rtype: numpy.ndarray
@@ -379,7 +385,7 @@ class FaceEngine:
         :type image: numpy.ndarray
 
         :param bounding_boxes: face bounding boxes
-        :type bounding_boxes: numpy.ndarray
+        :type bounding_boxes: list[tuple]
 
         :returns: array of embedding vectors with shape (n_faces, embedding_dim)
         :rtype: numpy.ndarray

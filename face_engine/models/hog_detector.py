@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import dlib
-import numpy as np
 
 from face_engine.exceptions import FaceError
 from face_engine.models import Detector
@@ -34,15 +33,15 @@ class HOGDetector(Detector, name='hog'):
         detections = self._face_detector(image)
         n_det = len(detections)
         if n_det < 1:
-            raise FaceError()
+            raise FaceError
 
-        img_size = np.asarray(image.shape)[0:2]
-        bounding_boxes = np.empty(shape=(n_det, 4), dtype=np.uint16)
-        for i, rect in enumerate(detections):
-            bounding_boxes[i, 0] = np.maximum(rect.left(), 0)
-            bounding_boxes[i, 1] = np.maximum(rect.top(), 0)
-            bounding_boxes[i, 2] = np.minimum(rect.right(), img_size[1])
-            bounding_boxes[i, 3] = np.minimum(rect.bottom(), img_size[0])
+        height, width = image.shape[0:2]
+        bounding_boxes = [(
+            max(rect.left(), 0),
+            max(rect.top(), 0),
+            min(rect.right(), width),
+            min(rect.bottom(), height))
+            for rect in detections]
         return None, bounding_boxes
 
     def detect_one(self, image):

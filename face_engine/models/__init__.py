@@ -45,9 +45,9 @@ class Model:
 
 
 class Detector(Model):
-    """Human face detector object.
+    """Human face detector model base class.
 
-        -   bounding box format is (left, top, right, bottom)
+        - bounding box format is (left, upper, right, lower)
     """
 
     def detect_all(self, image):
@@ -58,8 +58,7 @@ class Detector(Model):
         :type image: numpy.ndarray
 
         :returns: confidence scores and bounding boxes.
-             shape of bounding box is (n_faces, 4).
-        :rtype: tuple(numpy.ndarray, numpy.ndarray)
+        :rtype: tuple(list, list[tuple])
 
         :raises FaceError: if there is no faces in the image
         """
@@ -73,7 +72,7 @@ class Detector(Model):
         :type image: numpy.ndarray
 
         :returns: confidence score and bounding box.
-        :rtype: numpy.ndarray
+        :rtype: tuple(float, tuple)
 
         :raises FaceError: if there is no faces in the image
         """
@@ -98,7 +97,7 @@ class Embedder(Model):
         :type image: numpy.ndarray
 
         :param bounding_box: face bounding box
-        :type bounding_box: list | numpy.ndarray
+        :type bounding_box: tuple
 
         :returns: embedding vector
         :rtype: numpy.ndarray
@@ -112,8 +111,8 @@ class Embedder(Model):
         :param image: RGB image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
-        :param bounding_boxes: face bounding boxes with shape (n_faces, 4).
-        :type bounding_boxes: numpy.ndarray
+        :param bounding_boxes: face bounding boxes
+        :type bounding_boxes: list[tuple]
 
         :returns: array of embedding vectors with shape (n_faces, embedding_dim)
         :rtype: numpy.ndarray
