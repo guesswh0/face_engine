@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['__version__', 'logger', 'RESOURCES', 'FaceEngine', 'models']
+__all__ = ['__version__', 'logger', 'RESOURCES', 'FaceEngine', '_models']
 
 __version__ = '2.0.0-dev'
 
@@ -24,4 +24,4 @@ logger = logging.getLogger(__name__)
 RESOURCES = os.path.abspath(
     os.path.join(os.path.dirname(__file__), 'resources'))
 
-from face_engine.core import FaceEngine, models
+from face_engine.core import FaceEngine, _models

@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['models', 'Model', 'Detector', 'Embedder', 'Predictor']
+__all__ = ['_models', 'Model', 'Detector', 'Embedder', 'Predictor']
 
 from face_engine.tools import import_package
 
-models = {}
+_models = {}
 """storage for registered model classes"""
 
 
@@ -37,10 +37,10 @@ class Model:
     def __init_subclass__(cls, name=None, **kwargs):
         if name:
             cls.name = name
-            models[name] = cls
+            _models[name] = cls
         elif cls.__name__ in __all__:
             cls.name = 'abstract_' + cls.__name__.lower()
-            models[cls.name] = cls
+            _models[cls.name] = cls
         super().__init_subclass__(**kwargs)
 
 

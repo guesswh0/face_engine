@@ -19,7 +19,7 @@ from PIL import Image
 
 from . import logger
 from .exceptions import FaceError, TrainError
-from .models import models
+from .models import _models
 from .tools import imread
 
 
@@ -106,10 +106,10 @@ class FaceEngine:
 
         if not name:
             name = 'hog'
-        if name not in models:
+        if name not in _models:
             logger.warning("Detector model '%s' not found!", name)
             name = 'abstract_detector'
-        model = models.get(name)
+        model = _models.get(name)
         self._detector = model()
 
     @property
@@ -133,10 +133,10 @@ class FaceEngine:
 
         if not name:
             name = 'resnet'
-        if name not in models:
+        if name not in _models:
             logger.warning("Embedder model '%s' not found!", name)
             name = 'abstract_embedder'
-        model = models.get(name)
+        model = _models.get(name)
         self._embedder = model()
 
     @property
@@ -161,10 +161,10 @@ class FaceEngine:
 
         if not name:
             name = 'linear'
-        if name not in models:
+        if name not in _models:
             logger.warning("Predictor model '%s' not found!", name)
             name = 'abstract_predictor'
-        model = models.get(name)
+        model = _models.get(name)
         self._predictor = model()
 
     def fit(self, images, class_names, bounding_boxes=None):
