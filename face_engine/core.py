@@ -248,6 +248,39 @@ class FaceEngine:
 
         return self._predictor.predict(embeddings)
 
+    def make_prediction(self, image, **kwargs):
+        """ Lazy prediction method to make prediction by given image.
+
+        Convenient wrapper method to go over all steps of face recognition
+        problem by one call.
+
+        In particular:
+            .find_faces() - detector
+            .compute_embeddings() - embedder
+            .predict() - predictor
+
+        Keyword arguments is all parameters of .find_faces() method.
+        Returns image all face bounding boxes with predicted class names.
+        May raise same exceptions of all calling methods.
+
+        :param image: actual image content or image file uri.
+        :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
+
+        :returns: bounding boxes, and class names
+        :rtype: tuple(list, list)
+
+        :raises FaceError: if there is no faces in the image
+        :raises TrainError: if model not fitted
+        """
+
+        if not hasattr(image, 'shape'):
+            image = imread(image)
+
+        _, bounding_boxes = self.find_faces(image, **kwargs)
+        embeddings = self.compute_embeddings(image, bounding_boxes)
+        _, class_names = self.predict(embeddings)
+        return bounding_boxes, class_names
+
     def find_face(self, image, scale=None, normalize=False):
         """Find one face in the image. 'Detector's wrapping method.
         Used to find the image largest face bounding box.
