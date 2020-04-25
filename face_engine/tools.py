@@ -68,6 +68,8 @@ def imread(uri, mode=None):
 def import_module(filepath):
     """Convenient function to import module by given filepath.
 
+    Note that this function is using file path unlike importlib's import_module.
+
     :param filepath: absolute or relative filepath
     :type filepath: str | bytes | os.PathLike | Path
     """
@@ -81,14 +83,15 @@ def import_module(filepath):
         logger.info("Module '%s' has not been imported: %s", path.stem, e)
 
 
-def import_submodules(filepath):
-    """Convenient function to import all submodules of given filepath.
+def import_package(package):
+    """Convenient function to import all modules of given package
+    except __init__.py
 
-    :param filepath: absolute or relative filepath
-    :type filepath: str | bytes | os.PathLike | Path
+    :param package: absolute or relative filepath to the package
+    :type package: str | bytes | os.PathLike | Path
     """
 
-    base = Path(filepath).parent
-    for file in base.glob('*.py'):
+    for file in Path(package).parent.glob('*.py'):
+        # skip all underscore files (__init__.py, compiled files, etc)
         if not file.stem.startswith('_'):
             import_module(file)

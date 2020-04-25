@@ -14,7 +14,7 @@
 
 __all__ = ['models', 'Model', 'Detector', 'Embedder', 'Predictor']
 
-from face_engine.tools import import_submodules
+from face_engine.tools import import_package
 
 models = {}
 """storage for registered model classes"""
@@ -176,4 +176,4 @@ class Predictor(Model):
         raise NotImplementedError()
 
 
-import_submodules(__file__)
+import_package(__file__)
