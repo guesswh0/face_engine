@@ -12,10 +12,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 from importlib import util
 from pathlib import Path
+from urllib.request import urlopen, Request
+
+import numpy as np
+from PIL import Image
 
 from . import logger
+
+# from django URLValidator
+_url_validation_regex = re.compile(
+    r'^(?:http|ftp)s?://'  # scheme
+    r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain
+    r'localhost|'  # localhost
+    r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ip
+    r'(?::\d+)?'  # optional port
+    r'(?:/?|[/?]\S+)$',
+    re.IGNORECASE)
+
+
+def imread(uri, mode=None):
+    """ Reads an image from the specified file.
+
+    References:
+        [1] https://pillow.readthedocs.io/en/stable/reference/Image.html
+        [2] https://stackoverflow.com/questions/7160737
+
+
+    :param uri: image file, file path or url
+    :type uri:  str | bytes | file | os.PathLike
+
+    :param mode: format mode to convert the image to.
+        More info on accepted mode types see on [2].
+    :type mode: str
+
+    :returns: image content as unsigned 8-bit numpy array
+    """
+
+    # handle requests too
+    if isinstance(uri, Request):
+        uri = uri.full_url
+
+    # url validation
+    if isinstance(uri, str) and re.match(_url_validation_regex, uri):
+        uri = urlopen(uri)
+
+    image = Image.open(uri)
+    if mode:
+        image = image.convert(mode)
+    return np.uint8(image)
 
 
 def import_module(filepath):

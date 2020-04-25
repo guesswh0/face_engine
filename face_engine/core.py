@@ -20,6 +20,7 @@ from PIL import Image
 from . import logger
 from .exceptions import FaceError, TrainError
 from .models import models
+from .tools import imread
 
 
 class FaceEngine:
@@ -199,19 +200,20 @@ class FaceEngine:
 
         if bounding_boxes:
             for image, bb in zip(images, bounding_boxes):
-                img = np.asarray(Image.open(image))
+                img = imread(image)
                 embedding = self._embedder.compute_embedding(img, bb)
                 embeddings.append(embedding)
             targets = class_names
         else:
             for image, target in zip(images, class_names):
-                img = np.asarray(Image.open(image))
+                img = imread(image)
                 try:
                     _, bb = self._detector.detect_one(img)
                     embedding = self._embedder.compute_embedding(img, bb)
                     targets.append(target)
                     embeddings.append(embedding)
                 except FaceError:
+                    # if face not found in image skip it
                     continue
 
         n_samples = len(targets)
