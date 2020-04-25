@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import pickle
 
 import numpy as np
 from PIL import Image
@@ -21,6 +22,39 @@ from . import logger
 from .exceptions import FaceError, TrainError
 from .models import _models
 from .tools import imread
+
+
+def load_engine(filename):
+    """ Loads and restores engine object from the file.
+
+    This function is convenient wrapper of pickle.load() function, and is used
+    to deserialize and restore the engine object from the persisted state.
+
+    Predictor model's state is loaded separately and is loaded only
+    if there is something saved before by engine.save() method.
+    Predictor model serialization (.save) and deserialization (.load) process
+    steps is the responsibility of it's inheriting class.
+
+    :param filename: serialized by engine.save() method file name
+    :type filename: str
+
+    :return: restored engine object
+    :rtype: FaceEngine
+    """
+
+    with open(filename, 'rb') as file:
+        engine = pickle.load(file)
+
+    # foolproof
+    if not isinstance(engine, FaceEngine):
+        raise TypeError("file %s could not be deserialized as "
+                        "FaceEngine instance" % filename)
+
+    # load predictor model's state only if there is something to restore
+    if engine.n_samples > 0:
+        # pass filename's directory name
+        engine._predictor.load(os.path.dirname(filename))
+    return engine
 
 
 class FaceEngine:
@@ -83,6 +117,34 @@ class FaceEngine:
         # keep last fitted number of identities and samples
         self.n_identities = 0
         self.n_samples = 0
+
+    def __getstate__(self):
+        # copy the engine object's state from self.__dict__
+        # using copy to avoid modifying the original state
+        state = self.__dict__.copy()
+
+        # remove the model objects (unpicklable entries)
+        del state['_detector']
+        del state['_embedder']
+        del state['_predictor']
+
+        # persist the model objects names
+        state['detector'] = self.detector
+        state['embedder'] = self.embedder
+        state['predictor'] = self.predictor
+
+        # returns engine instance's lightweight state dictionary
+        # contents of the which will be used by pickle in .save() method
+        return state
+
+    def __setstate__(self, state):
+        # initialize engine models by their setter methods
+        self.detector = state.pop('detector')
+        self.embedder = state.pop('embedder')
+        self.predictor = state.pop('predictor')
+
+        # update rest attributes
+        self.__dict__.update(state)
 
     @property
     def detector(self):
@@ -166,6 +228,21 @@ class FaceEngine:
             name = 'abstract_predictor'
         model = _models.get(name)
         self._predictor = model()
+
+    def save(self, filename):
+        """ Save engine object state to the file.
+
+        Persisting the object state as lightweight engine instance which
+        contains only model name strings instead of model objects itself.
+        Upon loading model objects will have to be re-initialized.
+        """
+
+        # save predictor model's state only if there is something to persist
+        if self.n_samples > 0:
+            self._predictor.save(os.path.dirname(filename))
+
+        with open(filename, 'wb') as file:
+            pickle.dump(self, file)
 
     def fit(self, images, class_names, bounding_boxes=None):
         """Fit face predictor model with given images for given class names.
@@ -422,37 +499,3 @@ class FaceEngine:
         """
 
         return self._embedder.compute_embeddings(image, bounding_boxes)
-
-    def load(self, filename):
-        """Load model state - helper method"""
-
-        import pickle
-
-        with open(filename, 'rb') as file:
-            model_state = pickle.load(file)
-        self.__dict__.update(model_state)
-        self.detector = model_state['detector']
-        self.embedder = model_state['embedder']
-        self.predictor = model_state['predictor']
-
-        # load predictor state
-        self._predictor.load(os.path.dirname(filename))
-
-    def save(self, filename):
-        """Save model state - helper method"""
-
-        import pickle
-
-        _copy = self.__dict__.copy()
-        # cleanup and reassign models by their names
-        del _copy['_detector']
-        _copy['detector'] = self.detector
-        del _copy['_embedder']
-        _copy['embedder'] = self.embedder
-        del _copy['_predictor']
-        _copy['predictor'] = self.predictor
-
-        # save predictor state
-        self._predictor.save(os.path.dirname(filename))
-        with open(filename, 'wb') as file:
-            pickle.dump(_copy, file)
