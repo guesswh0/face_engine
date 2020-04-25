@@ -242,8 +242,8 @@ class FaceEngine:
         vectors with shape (n_faces, embedding_dim)
         :type image_or_embeddings: numpy.array
 
-        :returns: predicted similarity scores and class names
-        :rtype: tuple[numpy.ndarray, numpy.ndarray]
+        :returns: prediction scores and class names
+        :rtype: tuple(list, list)
 
         :raises TrainError: if model not fitted
         :raises FaceError: if there is no faces in the image.

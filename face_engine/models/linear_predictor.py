@@ -21,11 +21,38 @@ from face_engine.exceptions import TrainError
 from face_engine.models import Predictor
 
 
-class LinearPredictor(Predictor, name='linear'):
-    """Linear predictor calculates `euclidean distance` (L2-norm) and
-    applies RBF kernel function `exp(-1/2*||x-x'||^2)` with `sigma=1`.
+def compare(source, target):
+    """ Compare vectors OvR. Returns the most similar target vector
+    index and score value.
 
-        -   output prediction (similarity) score is in range (0,1).
+    Compares source vector with each target vectors by calculating
+    euclidean distances (L2-norms).
+
+    Similarity score is estimated with RBF kernel function.
+
+    References:
+        [1] https://en.wikipedia.org/wiki/Euclidean_distance
+        [2] https://en.wikipedia.org/wiki/Radial_basis_function_kernel
+
+    :param source: source vector of shape (vector_dim,)
+    :type source: numpy.ndarray
+
+    :param target: target vectors of shape (n_samples, vector_dim)
+    :type target: numpy.ndarray
+
+    :returns: index and similarity score
+    :rtype: tuple(int, float)
+    """
+
+    distances = np.linalg.norm(target - source, axis=1)
+    index = np.argmin(distances)
+    score = np.exp(-0.5 * distances[index] ** 2)
+    return index, score
+
+
+class LinearPredictor(Predictor, name='linear'):
+    """ Linear predictor model. Makes predictions by linear comparing each
+    source embedding vector with each fitted embedding vectors.
     """
 
     def __init__(self):
@@ -38,27 +65,15 @@ class LinearPredictor(Predictor, name='linear'):
 
     def predict(self, embeddings):
         if self.class_names is None:
-            raise TrainError('Model not fitted yet!')
+            raise TrainError('Model is not fitted yet!')
 
-        n_faces = embeddings.shape[0]
-        scores = np.empty(n_faces, dtype=np.float32)
-        indices = np.empty(n_faces, dtype=np.uint32)
-        for i, embedding in enumerate(embeddings):
-            indices[i], scores[i] = self.compare(embedding, self.embeddings)
-        return scores, self.class_names[indices]
-
-    @staticmethod
-    def compare(source, target):
-        """Convenient method to compare embeddings OvR.
-
-        :param source: source embedding, of shape (emb_dim, )
-        :type source: numpy.array
-
-        :param target: target embeddings of shape (n_samples, embedding_dim)
-        :type target: numpy.array
-
-        :returns: similarity score, and class name
-        :rtype: tuple[float, int]
+        scores = []
+        class_names = []
+        for embedding in embeddings:
+            index, score = compare(embedding, self.embeddings)
+            scores.append(score)
+            class_names.append(self.class_names[index])
+        return scores, class_names
 
         """
 

@@ -158,7 +158,7 @@ class Predictor(Model):
         :type embeddings: numpy.array
 
         :returns: prediction scores and class names
-        :rtype: tuple[numpy.ndarray, numpy.ndarray]
+        :rtype: tuple(list, list)
 
         :raises TrainError: if model not fitted
         """
