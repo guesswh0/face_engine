@@ -263,8 +263,8 @@ class FaceEngine:
         """Find one face in the image. 'Detector's wrapping method.
         Used to find the image largest face bounding box.
 
-        :param image: RGB Image with shape (rows, cols, 3)
-        :type image: numpy.ndarray
+        :param image: RGB image, content or file uri.
+        :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
 
         :param scale: scale image by a certain factor, value > 0
         :type scale: float
@@ -276,6 +276,9 @@ class FaceEngine:
 
         :raises FaceError: if there is no face in the image
         """
+
+        if not hasattr(image, 'shape'):
+            image = imread(image)
 
         # original image height and width
         height, width = image.shape[0:2]
@@ -304,8 +307,8 @@ class FaceEngine:
         Used to find faces bounding boxes of in the image, with several
         pre and post-processing abilities.
 
-        :param image: RGB Image with shape (rows, cols, 3)
-        :type image: numpy.ndarray
+        :param image: RGB image, content or file uri.
+        :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
 
         :param roi: region of interest rectangle,
             format (left, upper, right, lower)
@@ -322,6 +325,9 @@ class FaceEngine:
 
         :raises FaceError: if there is no faces in the image
         """
+
+        if not hasattr(image, 'shape'):
+            image = imread(image)
 
         # original image height and width
         height, width = image.shape[0:2]
