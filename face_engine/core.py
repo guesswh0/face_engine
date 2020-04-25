@@ -231,33 +231,22 @@ class FaceEngine:
         self.n_identities = n_identities
         return self
 
-    def predict(self, image_or_embeddings):
-        """`Predictor`s wrapping method to predict class name by given image or
-        embedding vectors. If fed with image, default values for `find_faces`
-        and `compute_embeddings` will be used.
+    def predict(self, embeddings):
+        """Predict class name by given embedding vectors.
 
-        [*] may raise FaceError only if had fed with image.
+        Predictor's wrapping method
 
-        :param image_or_embeddings: RGB image or array of embedding
-        vectors with shape (n_faces, embedding_dim)
-        :type image_or_embeddings: numpy.array
+        :param embeddings: array of embedding vectors
+            with shape (n_faces, embedding_dim)
+        :type embeddings: numpy.ndarray
 
         :returns: prediction scores and class names
         :rtype: tuple(list, list)
 
         :raises TrainError: if model not fitted
-        :raises FaceError: if there is no faces in the image.
         """
 
-        # check if arg is image
-        if len(image_or_embeddings.shape) > 2:
-            _, bounding_boxes = self.find_faces(image_or_embeddings)
-            embeddings = self.compute_embeddings(image_or_embeddings,
-                                                 bounding_boxes)
-            scores, class_names = self._predictor.predict(embeddings)
-        else:
-            scores, class_names = self._predictor.predict(image_or_embeddings)
-        return scores, class_names
+        return self._predictor.predict(embeddings)
 
     def find_face(self, image, scale=None, normalize=False):
         """Find one face in the image. 'Detector's wrapping method.
