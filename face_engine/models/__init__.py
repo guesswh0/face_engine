@@ -12,8 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['_models', 'Model', 'Detector', 'Embedder', 'Predictor']
+__all__ = ['_models', 'Detector', 'Embedder', 'Estimator']
 
+import os
+import pickle
+
+import numpy as np
+
+from face_engine.exceptions import TrainError
 from face_engine.tools import import_package
 
 _models = {}
@@ -24,6 +30,7 @@ class Model:
     """FaceEngine model base class. Used to register all inheriting and
     imported subclasses (subclass registration #PEP487).
 
+    Note:
         - implementing model classes must have `name` class descriptor
 
     """
@@ -47,6 +54,7 @@ class Model:
 class Detector(Model):
     """Human face detector model base class.
 
+    Note:
         - bounding box format is (left, upper, right, lower)
     """
 
@@ -83,7 +91,8 @@ class Detector(Model):
 class Embedder(Model):
     """This object calculates embedding vectors from the face containing image.
 
-        -   implementing model classes must have `dim` class descriptor
+    Note:
+        - implementing model classes should have `dim` class descriptor
     """
 
     def __init_subclass__(cls, name=None, dim=None, **kwargs):
@@ -121,37 +130,38 @@ class Embedder(Model):
         raise NotImplementedError()
 
 
-class Predictor(Model):
-    """This object is used to make predictions, to which class input face
-    embeddings belongs to, with some prediction score"""
+class Estimator(Model):
+    """Estimator model base class. Used to make predictions for face
+    embedding vectors.
+    """
 
-    def init_model(self, embedding_dim=None):
-        """Initialize and build predictor model (if required).
-        @override if predictor model requires separate method to init itself.
+    def fit(self, embeddings, class_names, **kwargs):
+        """Fit (train) estimator model with given embeddings for
+        given class names.
 
-        :param embedding_dim: optional
-        :type embedding_dim: int
-        """
+        Note that number samples of passed embbedings and class_names
+        has to be equal.
 
-    def fit(self, embeddings, class_names):
-        """Fit predictor with given embeddings for given class names
+        Keyword arguments is model and data dependent.
 
         :param embeddings: face embedding vectors
             with shape (n_samples, embedding_dim)
         :type embeddings: numpy.ndarray
 
         :param class_names: sequence of class names
-        :type class_names: list | numpy.ndarray
+        :type class_names: list
 
-        :returns self: object
+        :returns: self
 
-        :raises TrainError: if model fit (train) fails
+        :raises TrainError: If model fit (train) fails
         """
 
         raise NotImplementedError()
 
     def predict(self, embeddings):
-        """Predict class name by given embeddings.
+        """Make predictions for given embeddings.
+
+        To call predict(), model previously has to be fitted (trained).
 
         :param embeddings: array of embedding vectors
             with shape (n_faces, embedding_dim)
@@ -165,15 +175,93 @@ class Predictor(Model):
 
         raise NotImplementedError()
 
-    def save(self, path):
-        """Persist predictor model state to given path"""
+    def save(self, dirname):
+        """Persist estimators's model state to given directory.
+
+        File naming format convention:
+            name = '%s.estimator.%s' % (self.name, ext)
+        """
 
         raise NotImplementedError()
 
-    def load(self, path):
-        """Load predictor model state from given path"""
+    def load(self, dirname):
+        """Restore estimator's model state from given directory.
+
+        File naming format convention:
+            name = '%s.estimator.%s' % (self.name, ext)
+        """
 
         raise NotImplementedError()
+
+
+def compare(source, target):
+    """Compare vectors OvR. Returns the most similar target vector
+    index and score value.
+
+    Compares source vector with each target vectors by calculating
+    euclidean distances (L2-norms).
+
+    Similarity score is estimated with RBF kernel function.
+
+    References:
+        [1] https://en.wikipedia.org/wiki/Euclidean_distance
+        [2] https://en.wikipedia.org/wiki/Radial_basis_function_kernel
+
+    :param source: source vector of shape (vector_dim,)
+    :type source: numpy.ndarray
+
+    :param target: target vectors of shape (n_samples, vector_dim)
+    :type target: numpy.ndarray
+
+    :returns: index and similarity score
+    :rtype: tuple(int, float)
+    """
+
+    distances = np.linalg.norm(target - source, axis=1)
+    index = np.argmin(distances)
+    score = np.exp(-0.5 * distances[index] ** 2)
+    return index, score
+
+
+class BasicEstimator(Estimator, name='basic'):
+    """Basic estimator model, make predictions by linear comparing each source
+    embedding vector with each fitted embedding vectors.
+
+    Model is using python pickle module to persist estimator state. Default
+    file name is 'basic.estimator.p'.
+
+    (*) This model is used as FaceEngine default estimator.
+    """
+
+    def __init__(self):
+        self.embeddings = None
+        self.class_names = None
+
+    def fit(self, embeddings, class_names, **kwargs):
+        self.embeddings = embeddings
+        self.class_names = class_names
+
+    def predict(self, embeddings):
+        if self.class_names is None:
+            raise TrainError('Model is not fitted yet!')
+
+        scores = []
+        class_names = []
+        for embedding in embeddings:
+            index, score = compare(embedding, self.embeddings)
+            scores.append(score)
+            class_names.append(self.class_names[index])
+        return scores, class_names
+
+    def save(self, dirname):
+        name = '%s.est.%s' % (self.name, 'p')
+        with open(os.path.join(dirname, name), 'wb') as file:
+            pickle.dump(self.__dict__, file)
+
+    def load(self, dirname):
+        name = '%s.estimator.%s' % (self.name, 'p')
+        with open(os.path.join(dirname, name), 'rb') as file:
+            self.__dict__.update(pickle.load(file))
 
 
 import_package(__file__)
