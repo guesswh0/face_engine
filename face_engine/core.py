@@ -114,8 +114,8 @@ class FaceEngine:
         self.detector = kwargs.get('detector')
         self.embedder = kwargs.get('embedder')
         self.estimator = kwargs.get('estimator')
-        # keep last fitted number of identities and samples
-        self.n_identities = 0
+        # keep last fitted number of classes and samples
+        self.n_classes = 0
         self.n_samples = 0
 
     def __getstate__(self):
@@ -270,7 +270,7 @@ class FaceEngine:
         # also may raise TrainError
         self._estimator.fit(embeddings, class_names, **kwargs)
         self.n_samples = len(embeddings)
-        self.n_identities = len(set(class_names))
+        self.n_classes = len(set(class_names))
 
         return self
 
