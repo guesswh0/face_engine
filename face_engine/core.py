@@ -241,21 +241,52 @@ class FaceEngine:
         with open(filename, 'wb') as file:
             pickle.dump(self, file)
 
-    def fit(self, images, class_names, bounding_boxes=None, **kwargs):
+    def _fit(self, embeddings, class_names, **kwargs):
         """Fit (train) estimator model with given embeddings for
         given class names.
 
-        To not to use large memory buffers(image arrays) using
-        filenames or url strings.
+        Estimator's fit() wrapping method.
 
-        Keyword arguments is model and data dependent.
+        :param embeddings: face embedding vectors
+            with shape (n_samples, embedding_dim)
+        :type embeddings: numpy.ndarray | list
+
+        :param class_names: sequence of class names
+        :type class_names: list
+
+        :keyword kwargs: model and data dependent.
+
+        :return: self
+
+        :raise TrainError
+        """
+
+        if not isinstance(embeddings, np.ndarray):
+            embeddings = np.array(embeddings)
+
+        if len(embeddings) > self.limit:
+            raise TrainError('Enlarge buffer size')
+
+        # also may raise TrainError
+        self._estimator.fit(embeddings, class_names, **kwargs)
+        self.n_samples = len(embeddings)
+        self.n_identities = len(set(class_names))
+
+        return self
+
+    def fit(self, images, class_names, bounding_boxes=None, **kwargs):
+        """Fit (train) estimator model with given images for
+        given class names.
 
         Note:
-            - if the face is not found in the image, it will be skipped
-            - if 'bounding_boxes' presents, skips face bounding box detections
             - the number of images and class_names has to be equal
+            - the image will be skipped if the face is not found inside
+            - the presence of 'bounding_boxes' accelerates process
 
-        :param images: filenames or URLs of images
+        [*] Use array of file names or uri strings instead of large
+        memory buffers (image arrays).
+
+        :param images: image file names or uri strings
         :type images: list[str]
 
         :param class_names: sequence of class names
@@ -264,7 +295,9 @@ class FaceEngine:
         :param bounding_boxes: sequence of bounding boxes
         :type bounding_boxes: list[tuple]
 
-        :returns: self
+        :keyword kwargs: model and data dependent.
+
+        :return: self
 
         :raise TrainError
         """
@@ -293,19 +326,7 @@ class FaceEngine:
                     # if face not found in the image, skip it
                     continue
 
-        n_samples = len(targets)
-        n_identities = len(set(targets))
-        embeddings = np.array(embeddings)
-
-        if n_samples > self.limit:
-            raise TrainError('Enlarge buffer size')
-
-        # also may raise TrainError
-        self._estimator.fit(embeddings, targets, **kwargs)
-
-        self.n_samples = n_samples
-        self.n_identities = n_identities
-        return self
+        return self._fit(embeddings, targets, **kwargs)
 
     def predict(self, embeddings):
         """Make predictions for given embeddings.
