@@ -11,6 +11,9 @@ which could be called explicitly.
 
     To fetch testing images:
         $ fetch_images
+
+    To fetch testing datasets:
+        $ fetch_datasets
 """
 
 import os
@@ -23,7 +26,7 @@ RESOURCES = os.path.abspath(
 
 
 def fetch_images():
-    """Fetch test images"""
+    """Fetch testing images"""
 
     extract_dir = os.path.join(RESOURCES, 'images')
     # make sure the dir exists
@@ -70,9 +73,32 @@ def fetch_models():
         file = os.path.join(extract_dir, name)
         if os.path.isfile(file[:-4]):
             continue
-
         with tqdm.tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1,
                        desc=f"Downloading model: {name}") as t:
+            reporthook = _tqdm_hook(t)
+            filename, _ = urlretrieve(url_root + name, None, reporthook)
+        os.replace(filename, file)
+        unpack_archive(file, extract_dir)
+        os.remove(file)
+
+
+def fetch_datasets():
+    """Fetch testing datasets"""
+
+    extract_dir = os.path.join(RESOURCES, 'datasets')
+    # make sure the dir exists
+    if not os.path.isdir(extract_dir):
+        os.makedirs(os.path.abspath(extract_dir))
+
+    # Load images from guesswh0/storage repository
+    url_root = 'https://github.com/guesswh0/storage/raw/master/datasets/'
+    for name in ["train.zip", "test.zip"]:
+        # check if file exists
+        file = os.path.join(extract_dir, name)
+        if os.path.exists(file[:-4]):
+            continue
+        with tqdm.tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1,
+                       desc=f"Downloading dataset: {name}") as t:
             reporthook = _tqdm_hook(t)
             filename, _ = urlretrieve(url_root + name, None, reporthook)
         os.replace(filename, file)
@@ -136,3 +162,4 @@ def _unpack_bz2(filename, extract_dir):
 if __name__ == '__main__':
     fetch_models()
     fetch_images()
+    fetch_datasets()

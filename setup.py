@@ -41,7 +41,8 @@ setup(
         'console_scripts':
             [
                 'fetch_images=face_engine.fetching:fetch_images',
-                'fetch_models=face_engine.fetching:fetch_models'
+                'fetch_models=face_engine.fetching:fetch_models',
+                'fetch_datasets=face_engine.fetching:fetch_datasets',
             ]
     },
     classifiers=[
