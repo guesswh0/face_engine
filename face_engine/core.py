@@ -1,16 +1,6 @@
-# Copyright 2020 Daniyar Kussainov
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""
+FaceEngine core module.
+"""
 
 import os
 import pickle
@@ -25,7 +15,7 @@ from .tools import imread
 
 
 def load_engine(filename):
-    """ Loads and restores engine object from the file.
+    """Loads and restores engine object from the file.
 
     This function is convenient wrapper of pickle.load() function, and is used
     to deserialize and restore the engine object from the persisted state.
@@ -58,39 +48,10 @@ def load_engine(filename):
 
 
 class FaceEngine:
-    """Face recognition engine object.
+    """Face recognition engine base class.
 
-    Project main purpose is to simplify work with `face recognition problem`
-    computation core trio - detector, embedder, and estimator. FaceEngine
-    combines all of them in one interface model to simplify usage and
-    furthermore extends some features.
-
-    FaceEngine is working out of the box, with pre-defined default models. But
-    if you want to, you can work with your own pre-trained models for detector,
-    embedder or estimator. All you need to do is to implement model interfaces
-    Detector, Embedder or Estimator (see `models` package), and "register" it,
-    by importing your module or adding it to `PYTHONPATH` environment variable
-    or using appropriate convenient function `from face_engine.tools`.
-
-    From here you can use your model just by passing model name with
-    corresponding keyword argument of `__init__` method or setup it later by
-    calling corresponding setter method of FaceEngine object with model name
-    argument.
-
-    Examples:
-        To change model to dlib 'mmod' detector use:
-            >>> from face_engine import FaceEngine
-            >>> engine = FaceEngine()
-            >>> engine.detector = 'mmod'
-
-        To switch to your own model use corresponding setter method:
-            >>> from my_custom_models import my_custom_detector
-            >>> engine.detector = 'custom_detector'
-
-        To init with your own pre-trained detector use:
-            >>> from my_custom_models import my_custom_detector
-            >>> engine = FaceEngine(detector='custom_detector')
-
+    This object provides all steps and tools which is required to work with
+    face recognition task.
 
     Keyword arguments:
         :param detector: face detector model to use
@@ -149,7 +110,7 @@ class FaceEngine:
     @property
     def detector(self):
         """
-        :returns: detector name
+        :return: detector name
         :rtype: str
         """
 
@@ -176,7 +137,7 @@ class FaceEngine:
     @property
     def embedder(self):
         """
-        :returns: embedder model name
+        :return: embedder model name
         :rtype: str
         """
 
@@ -202,7 +163,7 @@ class FaceEngine:
     @property
     def estimator(self):
         """
-        :returns: estimator name
+        :return: estimator name
         :rtype: str
         """
 
@@ -211,8 +172,7 @@ class FaceEngine:
     @estimator.setter
     def estimator(self, name):
         """Estimator model to use:
-            - 'basic': linear comparing, by calculating `L2-norms` with
-            RBF kernel function (default)
+            - 'basic': linear comparing estimator (default)
 
         :param name: estimator model name
         :type name: str
@@ -227,7 +187,7 @@ class FaceEngine:
         self._estimator = Estimator()
 
     def save(self, filename):
-        """ Save engine object state to the file.
+        """Save engine object state to the file.
 
         Persisting the object state as lightweight engine instance which
         contains only model name strings instead of model objects itself.
@@ -254,7 +214,7 @@ class FaceEngine:
         :param class_names: sequence of class names
         :type class_names: list
 
-        :keyword kwargs: model and data dependent.
+        :keyword kwargs: model and data dependent
 
         :return: self
 
@@ -295,7 +255,7 @@ class FaceEngine:
         :param bounding_boxes: sequence of bounding boxes
         :type bounding_boxes: list[tuple]
 
-        :keyword kwargs: model and data dependent.
+        :keyword kwargs: model and data dependent
 
         :return: self
 
@@ -360,7 +320,7 @@ class FaceEngine:
         Returns image all face bounding boxes with predicted class names.
         May raise same exceptions of all calling methods.
 
-        :param image: actual image content or image file uri.
+        :param image: RGB image content or image file uri.
         :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
 
         :returns: bounding boxes, and class names
@@ -373,9 +333,9 @@ class FaceEngine:
         if not hasattr(image, 'shape'):
             image = imread(image)
 
-        _, bounding_boxes = self.find_faces(image, **kwargs)
+        bounding_boxes = self.find_faces(image, **kwargs)[1]
         embeddings = self.compute_embeddings(image, bounding_boxes)
-        _, class_names = self.predict(embeddings)
+        class_names = self.predict(embeddings)[1]
         return bounding_boxes, class_names
 
     def find_face(self, image, scale=None, normalize=False):
@@ -385,7 +345,7 @@ class FaceEngine:
 
         Detector's detect_one() wrapping method.
 
-        :param image: RGB image, content or file uri.
+        :param image: RGB image content or image file uri.
         :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
 
         :param scale: scale image by a certain factor, value > 0
@@ -433,7 +393,7 @@ class FaceEngine:
 
         Detector's detect_all() wrapping method.
 
-        :param image: RGB image, content or file uri.
+        :param image: RGB image content or image file uri.
         :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
 
         :param roi: region of interest rectangle,
@@ -500,13 +460,13 @@ class FaceEngine:
 
         Embedder's compute_embedding() wrapping method.
 
-        :param image: RGB Image with shape (rows, cols, 3)
+        :param image: RGB image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
         :param bounding_box: face bounding box
         :type bounding_box: tuple
 
-        :returns: embedding vector
+        :return: embedding vector
         :rtype: numpy.ndarray
         """
 
@@ -517,7 +477,7 @@ class FaceEngine:
 
         Embedder's compute_embeddings() wrapping method.
 
-        :param image: RGB Image with shape (rows, cols, 3)
+        :param image: RGB image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
         :param bounding_boxes: face bounding boxes

@@ -1,16 +1,19 @@
-# Copyright 2020 Daniyar Kussainov
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""
+FaceEngine default Detector and Embedder models.
+
+This models is using [dlib](http://dlib.net/python/index.html) python api.
+Pre-trained model files is provided by [dlib](http://dlib.net/files/).
+
+Note that FaceEngine installation is not installing dlib by default.
+To install it, either run `pip install dlib` (requires cmake) or follow
+[this](http://dlib.net/compile.html) build instructions.
+
+MMODDetector and ResNetEmbedder is using pre-trained models, which have to
+be downloaded manually, see `fetching.py`.
+
+Questions and issues according to the models accuracy and performance please
+address to dlib.
+"""
 
 import os
 
@@ -23,7 +26,7 @@ from face_engine.models import Detector, Embedder
 
 
 class HOGDetector(Detector, name='hog'):
-    """Dlib pre-trained "Histogram Oriented Gradients" model.
+    """Dlib "Histogram Oriented Gradients" model.
 
     Note:
         - detector does not provide a confidence scores for detections.

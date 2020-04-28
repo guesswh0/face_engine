@@ -1,18 +1,9 @@
-# Copyright 2020 Daniyar Kussainov
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""
+FaceEngine models API.
+"""
 
-__all__ = ['_models', 'Detector', 'Embedder', 'Estimator']
+__all__ = ['Detector', 'Embedder', 'Estimator',
+           '_models', 'compare', 'BasicEstimator']
 
 import os
 import pickle
@@ -23,7 +14,7 @@ from face_engine.exceptions import TrainError
 from face_engine.tools import import_package
 
 _models = {}
-"""storage for registered model classes"""
+"""storage for all registered model classes"""
 
 
 class Model:
@@ -142,14 +133,14 @@ class Estimator(Model):
         Note that number samples of passed embbedings and class_names
         has to be equal.
 
-        Keyword arguments is model and data dependent.
-
         :param embeddings: face embedding vectors
             with shape (n_samples, embedding_dim)
         :type embeddings: numpy.ndarray
 
         :param class_names: sequence of class names
         :type class_names: list
+
+        :keyword kwargs: model and data dependent
 
         :returns: self
 
@@ -254,7 +245,7 @@ class BasicEstimator(Estimator, name='basic'):
         return scores, class_names
 
     def save(self, dirname):
-        name = '%s.est.%s' % (self.name, 'p')
+        name = '%s.estimator.%s' % (self.name, 'p')
         with open(os.path.join(dirname, name), 'wb') as file:
             pickle.dump(self.__dict__, file)
 

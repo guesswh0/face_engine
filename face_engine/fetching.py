@@ -1,16 +1,17 @@
-# Copyright 2020 Daniyar Kussainov
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+#!/usr/bin/env python3
+"""
+Fetching tools.
+Used to download and unpack project default models and testing data.
+
+FaceEngine installation provides this fetching tools as console scripts,
+which could be called explicitly.
+
+    To fetch default models:
+        $ fetch_models
+
+    To fetch testing images:
+        $ fetch_images
+"""
 
 import os
 from urllib.request import urlretrieve
