@@ -19,7 +19,7 @@ import numpy as np
 from PIL import Image
 
 from . import logger
-from .exceptions import FaceError, TrainError
+from .exceptions import FaceNotFoundError, TrainError
 from .models import _models
 from .tools import imread
 
@@ -266,8 +266,7 @@ class FaceEngine:
 
         :returns: self
 
-        :raises TrainError: if model fit (train) fails
-        or numbers of samples exceeds buffer size
+        :raise TrainError
         """
 
         assert len(images) == len(class_names), (
@@ -290,7 +289,7 @@ class FaceEngine:
                     embedding = self._embedder.compute_embedding(img, bb)
                     targets.append(target)
                     embeddings.append(embedding)
-                except FaceError:
+                except FaceNotFoundError:
                     # if face not found in the image, skip it
                     continue
 
@@ -320,7 +319,7 @@ class FaceEngine:
         :returns: prediction scores and class names
         :rtype: tuple(list, list)
 
-        :raises TrainError: if model not fitted
+        :raise TrainError
         """
 
         return self._estimator.predict(embeddings)
@@ -346,8 +345,8 @@ class FaceEngine:
         :returns: bounding boxes, and class names
         :rtype: tuple(list, list)
 
-        :raises FaceError: if there is no faces in the image
-        :raises TrainError: if model not fitted
+        :raise FaceNotFoundError
+        :raise TrainError
         """
 
         if not hasattr(image, 'shape'):
@@ -377,7 +376,7 @@ class FaceEngine:
         :returns confidence score and bounding box
         :rtype tuple(float, tuple)
 
-        :raises FaceError: if there is no face in the image
+        :raise FaceNotFoundError
         """
 
         if not hasattr(image, 'shape'):
@@ -429,7 +428,7 @@ class FaceEngine:
         :returns: confidence scores and bounding boxes
         :rtype tuple(list, list[tuple])
 
-        :raises FaceError: if there is no faces in the image
+        :raise FaceNotFoundError
         """
 
         if not hasattr(image, 'shape'):

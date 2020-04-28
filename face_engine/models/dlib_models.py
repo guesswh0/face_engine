@@ -18,7 +18,7 @@ import dlib
 import numpy as np
 
 from face_engine import logger, RESOURCES
-from face_engine.exceptions import FaceError
+from face_engine.exceptions import FaceNotFoundError
 from face_engine.models import Detector, Embedder
 
 
@@ -37,7 +37,7 @@ class HOGDetector(Detector, name='hog'):
         detections = self._face_detector(image)
         n_det = len(detections)
         if n_det < 1:
-            raise FaceError
+            raise FaceNotFoundError
 
         height, width = image.shape[0:2]
         bounding_boxes = [(
@@ -84,7 +84,7 @@ class MMODDetector(Detector, name='mmod'):
         detections = self._cnn_face_detector(image)
         n_det = len(detections)
         if n_det < 1:
-            raise FaceError
+            raise FaceNotFoundError
 
         height, width = image.shape[0:2]
         bounding_boxes = list()

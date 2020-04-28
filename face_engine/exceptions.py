@@ -13,15 +13,9 @@
 # limitations under the License.
 
 
-class FaceError(Exception):
-    """Exception is raised if face not found on image"""
-
-    def __init__(self, msg=None):
-        if not msg:
-            msg = "Face not found"
-        super().__init__(msg)
+class FaceNotFoundError(Exception):
+    """Raised when the face is not found in the image"""
 
 
 class TrainError(Exception):
-    """Exception raised when train is failed"""
-    pass
+    """Raised when the fit(train) process is failed"""

@@ -68,7 +68,7 @@ class Detector(Model):
         :returns: confidence scores and bounding boxes.
         :rtype: tuple(list, list[tuple])
 
-        :raises FaceError: if there is no faces in the image
+        :raise FaceNotFoundError
         """
 
         raise NotImplementedError()
@@ -82,7 +82,7 @@ class Detector(Model):
         :returns: confidence score and bounding box.
         :rtype: tuple(float, tuple)
 
-        :raises FaceError: if there is no faces in the image
+        :raise FaceNotFoundError
         """
 
         raise NotImplementedError()
@@ -153,7 +153,7 @@ class Estimator(Model):
 
         :returns: self
 
-        :raises TrainError: If model fit (train) fails
+        :raise TrainError
         """
 
         raise NotImplementedError()
@@ -170,7 +170,7 @@ class Estimator(Model):
         :returns: prediction scores and class names
         :rtype: tuple(list, list)
 
-        :raises TrainError: if model not fitted
+        :raise TrainError
         """
 
         raise NotImplementedError()
