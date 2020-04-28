@@ -24,7 +24,7 @@ setup(
     author='Daniyar Kussainov',
     author_email='ohw0sseug@gmail.com',
     url="https://github.com/guesswh0/face_engine",
-    packages=find_packages(exclude=['tests']),
+    packages=find_packages(exclude=['tests', 'extra']),
     install_requires=[
         'numpy~=1.18.0',
         'pillow~=7.0.0',
