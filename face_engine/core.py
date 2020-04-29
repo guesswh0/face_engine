@@ -129,7 +129,8 @@ class FaceEngine:
         if not name:
             name = 'hog'
         if name not in _models:
-            logger.warning("Detector model '%s' not found!", name)
+            if name != 'hog':
+                logger.warning("Detector model '%s' not found!", name)
             name = 'abstract_detector'
         Detector = _models.get(name)
         self._detector = Detector()
@@ -155,7 +156,8 @@ class FaceEngine:
         if not name:
             name = 'resnet'
         if name not in _models:
-            logger.warning("Embedder model '%s' not found!", name)
+            if name != 'resnet':
+                logger.warning("Embedder model '%s' not found!", name)
             name = 'abstract_embedder'
         Embedder = _models.get(name)
         self._embedder = Embedder()
@@ -181,7 +183,8 @@ class FaceEngine:
         if not name:
             name = 'basic'
         if name not in _models:
-            logger.warning("Estimator model '%s' not found!", name)
+            if name != 'basic':
+                logger.warning("Estimator model '%s' not found!", name)
             name = 'abstract_estimator'
         Estimator = _models.get(name)
         self._estimator = Estimator()

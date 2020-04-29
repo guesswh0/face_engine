@@ -6,8 +6,6 @@ from urllib.request import urlopen, Request
 import numpy as np
 from PIL import Image
 
-from . import logger
-
 # from django URLValidator
 _url_validation_regex = re.compile(
     r'^(?:http|ftp)s?://'  # scheme
@@ -65,8 +63,10 @@ def import_module(filepath):
         spec = util.spec_from_file_location(path.stem, filepath)
         module = util.module_from_spec(spec)
         spec.loader.exec_module(module)
-    except ImportError as e:
-        logger.info("Module '%s' has not been imported: %s", path.stem, e)
+    except ImportError:
+        # skip raising on project [optional] default models
+        if path.stem not in ['dlib_models']:
+            raise
 
 
 def import_package(package):
