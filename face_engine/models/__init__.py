@@ -14,10 +14,10 @@ _models = {}
 
 class Model:
     """FaceEngine model base class. Used to register all inheriting and
-    imported subclasses (subclass registration #PEP487).
+    imported subclasses (subclass registration PEP 487).
 
-    Note:
-        - implementing model classes must have `name` class descriptor
+    .. note::
+        * implementing model classes must have ``name`` class descriptor
 
     """
 
@@ -40,13 +40,13 @@ class Model:
 class Detector(Model):
     """Human face detector model base class.
 
-    Note:
-        - bounding box format is (left, upper, right, lower)
+    .. note::
+        * bounding box format is (left, upper, right, lower)
     """
 
     def detect_all(self, image):
-        """Detect all face bounding boxes in the image,
-         with corresponding confidence scores.
+        """Detect all face bounding boxes in the image, with corresponding
+        confidence scores.
 
         :param image: RGB Image with shape (rows, cols, 3)
         :type image: numpy.ndarray
@@ -54,7 +54,7 @@ class Detector(Model):
         :returns: confidence scores and bounding boxes.
         :rtype: tuple(list, list[tuple])
 
-        :raise FaceNotFoundError
+        :raises: FaceNotFoundError
         """
 
         raise NotImplementedError()
@@ -68,7 +68,7 @@ class Detector(Model):
         :returns: confidence score and bounding box.
         :rtype: tuple(float, tuple)
 
-        :raise FaceNotFoundError
+        :raises: FaceNotFoundError
         """
 
         raise NotImplementedError()
@@ -77,8 +77,8 @@ class Detector(Model):
 class Embedder(Model):
     """This object calculates embedding vectors from the face containing image.
 
-    Note:
-        - implementing model classes should have `dim` class descriptor
+    .. note::
+        * implementing model classes should have ``dim`` class descriptor
     """
 
     def __init_subclass__(cls, name=None, dim=None, **kwargs):
@@ -125,8 +125,8 @@ class Estimator(Model):
         """Fit (train) estimator model with given embeddings for
         given class names.
 
-        Note that number samples of passed embbedings and class_names
-        has to be equal.
+        Note that the passed number of samples for ``embbedings`` and
+        ``class_names`` has to be equal.
 
         :param embeddings: face embedding vectors
             with shape (n_samples, embedding_dim)
@@ -139,7 +139,7 @@ class Estimator(Model):
 
         :returns: self
 
-        :raise TrainError
+        :raises: TrainError
         """
 
         raise NotImplementedError()
@@ -147,7 +147,8 @@ class Estimator(Model):
     def predict(self, embeddings):
         """Make predictions for given embeddings.
 
-        To call predict(), model previously has to be fitted (trained).
+        .. note::
+           Model previously has to be fitted.
 
         :param embeddings: array of embedding vectors
             with shape (n_faces, embedding_dim)
@@ -156,7 +157,7 @@ class Estimator(Model):
         :returns: prediction scores and class names
         :rtype: tuple(list, list)
 
-        :raise TrainError
+        :raises: TrainError
         """
 
         raise NotImplementedError()
@@ -165,7 +166,7 @@ class Estimator(Model):
         """Persist estimators's model state to given directory.
 
         File naming format convention:
-            name = '%s.estimator.%s' % (self.name, ext)
+          ``name = '%s.estimator.%s' % (self.name, ext)``
         """
 
         raise NotImplementedError()
@@ -174,7 +175,7 @@ class Estimator(Model):
         """Restore estimator's model state from given directory.
 
         File naming format convention:
-            name = '%s.estimator.%s' % (self.name, ext)
+            ``name = '%s.estimator.%s' % (self.name, ext)``
         """
 
         raise NotImplementedError()

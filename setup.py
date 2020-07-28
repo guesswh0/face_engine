@@ -11,15 +11,17 @@ def get_version(package):
     return re.search("__version__ = ['\"]([^'\"]+)['\"]", init_py).group(1)
 
 
-with open('README.md', encoding='utf-8') as f:
-    long_description = f.read()
+def long_description():
+    with open('README.rst', encoding='utf-8') as f:
+        return f.read()
+
 
 setup(
     name='face-engine',
     version=get_version('face_engine'),
     description='Face Recognition Engine',
-    long_description=long_description,
-    long_description_content_type='text/markdown',
+    long_description=long_description(),
+    long_description_content_type='text/x-rst',
     license='Apache License, Version 2.0',
     author='Daniyar Kussainov',
     author_email='ohw0sseug@gmail.com',

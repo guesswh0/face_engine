@@ -21,15 +21,15 @@ def load_engine(filename):
     to deserialize and restore the engine object from the persisted state.
 
     Estimator model's state is loaded separately and is loaded only
-    if there is something saved before by engine.save() method.
+    if there is something saved before by :meth:`~FaceEngine.save` method.
     Estimator model serialization (.save) and deserialization (.load) process
-    steps is the responsibility of it's inheriting class.
+    steps are the responsibility of it's inheriting class.
 
-    :param filename: serialized by engine.save() method file name
+    :param filename: serialized by :meth:`~FaceEngine.save` method file name
     :type filename: str
 
     :return: restored engine object
-    :rtype: FaceEngine
+    :rtype: :class:`.FaceEngine`
     """
 
     with open(filename, 'rb') as file:
@@ -50,21 +50,14 @@ def load_engine(filename):
 class FaceEngine:
     """Face recognition engine base class.
 
-    This object provides all steps and tools which is required to work with
+    This object provides all steps and tools which are required to work with
     face recognition task.
 
     Keyword arguments:
-        :param detector: face detector model to use
-        :type detector: str
-
-        :param embedder: face embedder model to use
-        :type embedder: str
-
-        :param estimator: face estimator model to use
-        :type estimator: str
-
-        :param limit: limit number of faces fed to estimator
-        :type limit: int
+        * detector (str) -- face detector model to use
+        * embedder (str) -- face embedder model to use
+        * estimator (str) -- face estimator model to use
+        * limit (int) -- limit number of faces fed to estimator
     """
 
     def __init__(self, **kwargs):
@@ -110,7 +103,7 @@ class FaceEngine:
     @property
     def detector(self):
         """
-        :return: detector name
+        :return: detector model name
         :rtype: str
         """
 
@@ -165,7 +158,7 @@ class FaceEngine:
     @property
     def estimator(self):
         """
-        :return: estimator name
+        :return: estimator model name
         :rtype: str
         """
 
@@ -208,8 +201,6 @@ class FaceEngine:
         """Fit (train) estimator model with given embeddings for
         given class names.
 
-        Estimator's fit() wrapping method.
-
         :param embeddings: face embedding vectors
             with shape (n_samples, embedding_dim)
         :type embeddings: numpy.ndarray | list
@@ -221,7 +212,7 @@ class FaceEngine:
 
         :return: self
 
-        :raise TrainError
+        :raises: TrainError
         """
 
         if not isinstance(embeddings, np.ndarray):
@@ -241,12 +232,14 @@ class FaceEngine:
         """Fit (train) estimator model with given images for
         given class names.
 
-        Note:
-            - the number of images and class_names has to be equal
-            - the image will be skipped if the face is not found inside
-            - the presence of 'bounding_boxes' accelerates process
+        Estimator's :meth:`~face_engine.models.Estimator.fit` wrapping method.
 
-        [*] Use array of file names or uri strings instead of large
+        .. note::
+            * the number of images and class_names has to be equal
+            * the image will be skipped if the face is not found inside
+            * the presence of 'bounding_boxes' accelerates process
+
+        [*] Uses array of file names or uri strings instead of large
         memory buffers (image arrays).
 
         :param images: image file names or uri strings
@@ -262,7 +255,7 @@ class FaceEngine:
 
         :return: self
 
-        :raise TrainError
+        :raises: TrainError
         """
 
         assert len(images) == len(class_names), (
@@ -294,7 +287,8 @@ class FaceEngine:
     def predict(self, embeddings):
         """Make predictions for given embeddings.
 
-        Estimator's predict() wrapping method.
+        Estimator's :meth:`~face_engine.models.Estimator.predict`
+        wrapping method.
 
         :param embeddings: array of embedding vectors
             with shape (n_faces, embedding_dim)
@@ -303,7 +297,7 @@ class FaceEngine:
         :returns: prediction scores and class names
         :rtype: tuple(list, list)
 
-        :raise TrainError
+        :raises: TrainError
         """
 
         return self._estimator.predict(embeddings)
@@ -315,22 +309,22 @@ class FaceEngine:
         problem by one call.
 
         In particular:
-            .find_faces() - detector
-            .compute_embeddings() - embedder
-            .predict() - estimator
+            1. :meth:`.find_faces` - detector
+            2. :meth:`.compute_embeddings` - embedder
+            3. :meth:`.predict` - estimator
 
-        Keyword arguments is all parameters of .find_faces() method.
+        Keyword arguments are all parameters of :meth:`.find_faces` method.
         Returns image all face bounding boxes with predicted class names.
         May raise same exceptions of all calling methods.
 
         :param image: RGB image content or image file uri.
         :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
 
-        :returns: bounding boxes, and class names
+        :returns: class names and bounding boxes
         :rtype: tuple(list, list)
 
-        :raise FaceNotFoundError
-        :raise TrainError
+        :raises: FaceNotFoundError
+        :raises: TrainError
         """
 
         if not hasattr(image, 'shape'):
@@ -339,14 +333,17 @@ class FaceEngine:
         bounding_boxes = self.find_faces(image, **kwargs)[1]
         embeddings = self.compute_embeddings(image, bounding_boxes)
         class_names = self.predict(embeddings)[1]
-        return bounding_boxes, class_names
+        return class_names, bounding_boxes
 
     def find_face(self, image, scale=None, normalize=False):
         """Find one face in the image.
 
-        Used to find the image largest face bounding box.
+        .. note::
+           If the image contains multiple faces, detects image
+           largest face bounding box.
 
-        Detector's detect_one() wrapping method.
+        Detector's :meth:`~face_engine.models.Detector.detect_one`
+        wrapping method.
 
         :param image: RGB image content or image file uri.
         :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
@@ -357,10 +354,10 @@ class FaceEngine:
         :param normalize: normalize output bounding box
         :type normalize: bool
 
-        :returns confidence score and bounding box
-        :rtype tuple(float, tuple)
+        :returns: confidence score and bounding box
+        :rtype: tuple(float, tuple)
 
-        :raise FaceNotFoundError
+        :raises: FaceNotFoundError
         """
 
         if not hasattr(image, 'shape'):
@@ -391,10 +388,10 @@ class FaceEngine:
     def find_faces(self, image, roi=None, scale=None, normalize=False):
         """Find multiple faces in the image.
 
-        Used to find faces bounding boxes of in the image, with several
-        pre and post-processing abilities.
+        Used to find all faces bounding boxes in the image.
 
-        Detector's detect_all() wrapping method.
+        Detector's :meth:`~face_engine.models.Detector.detect_all`
+        wrapping method.
 
         :param image: RGB image content or image file uri.
         :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
@@ -410,9 +407,9 @@ class FaceEngine:
         :type normalize: bool
 
         :returns: confidence scores and bounding boxes
-        :rtype tuple(list, list[tuple])
+        :rtype: tuple(list, list[tuple])
 
-        :raise FaceNotFoundError
+        :raises: FaceNotFoundError
         """
 
         if not hasattr(image, 'shape'):
@@ -461,7 +458,8 @@ class FaceEngine:
     def compute_embedding(self, image, bounding_box):
         """Compute image embedding for given bounding box.
 
-        Embedder's compute_embedding() wrapping method.
+        Embedder's :meth:`~face_engine.models.Embedder.compute_embedding`
+        wrapping method.
 
         :param image: RGB image with shape (rows, cols, 3)
         :type image: numpy.ndarray
@@ -478,7 +476,8 @@ class FaceEngine:
     def compute_embeddings(self, image, bounding_boxes):
         """ Compute image embeddings for given bounding boxes.
 
-        Embedder's compute_embeddings() wrapping method.
+        Embedder's :meth:`~face_engine.models.Embedder.compute_embeddings`
+        wrapping method.
 
         :param image: RGB image with shape (rows, cols, 3)
         :type image: numpy.ndarray

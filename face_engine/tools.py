@@ -21,8 +21,8 @@ def imread(uri, mode=None):
     """Reads an image from the specified file.
 
     References:
-        [1] https://pillow.readthedocs.io/en/stable/reference/Image.html
-        [2] https://stackoverflow.com/questions/7160737
+        1. https://pillow.readthedocs.io/en/stable/reference/Image.html
+        2. https://stackoverflow.com/questions/7160737
 
 
     :param uri: image file, file path or url
@@ -33,6 +33,7 @@ def imread(uri, mode=None):
     :type mode: str
 
     :returns: image content as unsigned 8-bit numpy array
+    :rtype: :class:`~numpy.uint8`
     """
 
     # handle requests too

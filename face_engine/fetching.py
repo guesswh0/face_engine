@@ -3,7 +3,7 @@
 Fetching tools.
 Used to download and unpack project default models and testing data.
 
-FaceEngine installation provides this fetching tools as console scripts,
+FaceEngine installation provides these fetching tools as console scripts,
 which could be called explicitly.
 
     To fetch default models:
@@ -133,10 +133,10 @@ def _tqdm_hook(t):
 def unpack_archive(filename, extract_dir=None):
     """shutil.unpack_archive wrapper to unpack ['.dat.bz2'] archive.
 
-        :param filename: name of the archive.
-        :param extract_dir:name of the target directory, where the archive
+    :param filename: name of the archive.
+    :param extract_dir: name of the target directory, where the archive
         is unpacked. If not provided, the current working directory is used.
-        """
+    """
     import shutil
 
     # hardcoded for .dat.bz2

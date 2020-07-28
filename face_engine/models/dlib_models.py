@@ -1,20 +1,3 @@
-"""
-FaceEngine default Detector and Embedder models.
-
-This models is using [dlib](http://dlib.net/python/index.html) python api.
-Pre-trained model files is provided by [dlib](http://dlib.net/files/).
-
-Note that FaceEngine installation is not installing dlib by default.
-To install it, either run `pip install dlib` (requires cmake) or follow
-[this](http://dlib.net/compile.html) build instructions.
-
-MMODDetector and ResNetEmbedder is using pre-trained models, which have to
-be downloaded manually, see `fetching.py`.
-
-Questions and issues according to the models accuracy and performance please
-address to dlib.
-"""
-
 import os
 
 import dlib
@@ -28,9 +11,9 @@ from face_engine.models import Detector, Embedder
 class HOGDetector(Detector, name='hog'):
     """Dlib "Histogram Oriented Gradients" model.
 
-    Note:
-        - detector does not provide a confidence scores for detections.
-        - bounding box sizes are equal for all detections.
+    .. note::
+        * bounding box sizes are equal for all detections.
+        * detector does not provide confidence scores for detections.
     """
 
     def __init__(self):
@@ -62,14 +45,14 @@ class MMODDetector(Detector, name='mmod'):
     """Dlib pre-trained CNN model with "Max-Margin Object Detection"
     loss function.
 
-    Note:
-        - to run in realtime requires high-end Nvidia GPU with CUDA/cuDNN [2].
-        - bounding box sizes are equal for all detections.
+    .. note::
+        * bounding box sizes are equal for all detections.
+        * to run in realtime requires high-end Nvidia GPU with CUDA/cuDNN.
 
     References:
-        [1] http://dlib.net/python/index.html
-        [2] https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html
-        [3] http://dlib.net/files/mmod_human_face_detector.dat.bz2
+        1. http://dlib.net/python/index.html
+        2. https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html
+        3. http://dlib.net/files/mmod_human_face_detector.dat.bz2
     """
 
     def __init__(self) -> None:
@@ -110,14 +93,14 @@ class MMODDetector(Detector, name='mmod'):
 class ResNetEmbedder(Embedder, name='resnet', dim=128):
     """ Dlib pre-trained face recognition ResNet model.
 
-    Note:
-        - face alignment pre-processing used with 5 point shape_predictor [3].
+    .. note::
+        * face alignment pre-processing used with 5 point shape_predictor.
 
 
     References:
-        [1] http://dlib.net/python/index.html
-        [2] http://dlib.net/files/dlib_face_recognition_resnet_model_v1.dat.bz2
-        [3] http://dlib.net/files/shape_predictor_5_face_landmarks.dat.bz2
+        1. http://dlib.net/python/index.html
+        2. http://dlib.net/files/dlib_face_recognition_resnet_model_v1.dat.bz2
+        3. http://dlib.net/files/shape_predictor_5_face_landmarks.dat.bz2
     """
 
     def __init__(self) -> None:
