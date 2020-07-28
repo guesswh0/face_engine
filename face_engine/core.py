@@ -491,3 +491,42 @@ class FaceEngine:
         """
 
         return self._embedder.compute_embeddings(image, bounding_boxes)
+
+    def compare_faces(self, source, target):
+        """Compare a face in the source image with each face in the
+        target image, to find out the most similar one.
+
+        .. note::
+           If the source image contains multiple faces, detects image
+           largest face bounding box.
+
+        Similarity score is estimated with RBF kernel.
+
+        References:
+            1. https://en.wikipedia.org/wiki/Euclidean_distance
+            2. https://en.wikipedia.org/wiki/Radial_basis_function_kernel
+
+        :param source: RGB image content or image file uri.
+        :type source: numpy.ndarray | {str, bytes, file, os.PathLike}
+
+        :param target: RGB image content or image file uri.
+        :type target: numpy.ndarray | {str, bytes, file, os.PathLike}
+
+        :returns: similarity score and bounding box
+        :rtype: tuple(float, tuple)
+        """
+
+        if not hasattr(source, 'shape'):
+            source = imread(source)
+        source_bb = self._detector.detect_one(source)[1]
+        source_vector = self._embedder.compute_embedding(source, source_bb)
+
+        if not hasattr(target, 'shape'):
+            target = imread(target)
+        target_bbs = self._detector.detect_all(target)[1]
+        target_vector = self._embedder.compute_embeddings(target, target_bbs)
+
+        distances = np.linalg.norm(target_vector - source_vector, axis=1)
+        index = np.argmin(distances)
+        score = np.exp(-0.5 * distances[index] ** 2)
+        return score, target_bbs[index]
