@@ -1,16 +1,20 @@
-# Copyright 2020 Daniyar Kussainov
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+#!/usr/bin/env python3
+"""
+Fetching tools.
+Used to download and unpack project default models and testing data.
+
+FaceEngine installation provides these fetching tools as console scripts,
+which could be called explicitly.
+
+    To fetch default models:
+        $ fetch_models
+
+    To fetch testing images:
+        $ fetch_images
+
+    To fetch testing datasets:
+        $ fetch_datasets
+"""
 
 import os
 from urllib.request import urlretrieve
@@ -22,7 +26,7 @@ RESOURCES = os.path.abspath(
 
 
 def fetch_images():
-    """Fetch test images"""
+    """Fetch testing images"""
 
     extract_dir = os.path.join(RESOURCES, 'images')
     # make sure the dir exists
@@ -69,9 +73,32 @@ def fetch_models():
         file = os.path.join(extract_dir, name)
         if os.path.isfile(file[:-4]):
             continue
-
         with tqdm.tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1,
                        desc=f"Downloading model: {name}") as t:
+            reporthook = _tqdm_hook(t)
+            filename, _ = urlretrieve(url_root + name, None, reporthook)
+        os.replace(filename, file)
+        unpack_archive(file, extract_dir)
+        os.remove(file)
+
+
+def fetch_datasets():
+    """Fetch testing datasets"""
+
+    extract_dir = os.path.join(RESOURCES, 'datasets')
+    # make sure the dir exists
+    if not os.path.isdir(extract_dir):
+        os.makedirs(os.path.abspath(extract_dir))
+
+    # Load images from guesswh0/storage repository
+    url_root = 'https://github.com/guesswh0/storage/raw/master/datasets/'
+    for name in ["train.zip", "test.zip"]:
+        # check if file exists
+        file = os.path.join(extract_dir, name)
+        if os.path.exists(file[:-4]):
+            continue
+        with tqdm.tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1,
+                       desc=f"Downloading dataset: {name}") as t:
             reporthook = _tqdm_hook(t)
             filename, _ = urlretrieve(url_root + name, None, reporthook)
         os.replace(filename, file)
@@ -106,10 +133,10 @@ def _tqdm_hook(t):
 def unpack_archive(filename, extract_dir=None):
     """shutil.unpack_archive wrapper to unpack ['.dat.bz2'] archive.
 
-        :param filename: name of the archive.
-        :param extract_dir:name of the target directory, where the archive
+    :param filename: name of the archive.
+    :param extract_dir: name of the target directory, where the archive
         is unpacked. If not provided, the current working directory is used.
-        """
+    """
     import shutil
 
     # hardcoded for .dat.bz2
@@ -135,3 +162,4 @@ def _unpack_bz2(filename, extract_dir):
 if __name__ == '__main__':
     fetch_models()
     fetch_images()
+    fetch_datasets()

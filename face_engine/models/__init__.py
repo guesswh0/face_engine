@@ -1,30 +1,23 @@
-# Copyright 2020 Daniyar Kussainov
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""
+FaceEngine models API.
+"""
 
-__all__ = ['models', 'Model', 'Detector', 'Embedder', 'Predictor']
+__all__ = ['Detector', 'Embedder', 'Estimator', '_models']
 
-from face_engine.tools import import_submodules
+import numpy as np
 
-models = {}
-"""storage for registered model classes"""
+from face_engine.tools import import_package
+
+_models = {}
+"""storage for all registered model classes"""
 
 
 class Model:
     """FaceEngine model base class. Used to register all inheriting and
-    imported subclasses (subclass registration #PEP487).
+    imported subclasses (subclass registration PEP 487).
 
-        - implementing model classes must have `name` class descriptor
+    .. note::
+        * implementing model classes must have ``name`` class descriptor
 
     """
 
@@ -37,31 +30,31 @@ class Model:
     def __init_subclass__(cls, name=None, **kwargs):
         if name:
             cls.name = name
-            models[name] = cls
+            _models[name] = cls
         elif cls.__name__ in __all__:
             cls.name = 'abstract_' + cls.__name__.lower()
-            models[cls.name] = cls
+            _models[cls.name] = cls
         super().__init_subclass__(**kwargs)
 
 
 class Detector(Model):
-    """Human face detector object.
+    """Human face detector model base class.
 
-        -   bounding box format is (left, top, right, bottom)
+    .. note::
+        * bounding box format is (left, upper, right, lower)
     """
 
     def detect_all(self, image):
-        """Detect all face bounding boxes in the image,
-         with corresponding confidence scores.
+        """Detect all face bounding boxes in the image, with corresponding
+        confidence scores.
 
         :param image: RGB Image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
         :returns: confidence scores and bounding boxes.
-             shape of bounding box is (n_faces, 4).
-        :rtype: tuple(numpy.ndarray, numpy.ndarray)
+        :rtype: tuple(list, list[tuple])
 
-        :raises FaceError: if there is no faces in the image
+        :raises: FaceNotFoundError
         """
 
         raise NotImplementedError()
@@ -73,9 +66,9 @@ class Detector(Model):
         :type image: numpy.ndarray
 
         :returns: confidence score and bounding box.
-        :rtype: numpy.ndarray
+        :rtype: tuple(float, tuple)
 
-        :raises FaceError: if there is no faces in the image
+        :raises: FaceNotFoundError
         """
 
         raise NotImplementedError()
@@ -84,7 +77,8 @@ class Detector(Model):
 class Embedder(Model):
     """This object calculates embedding vectors from the face containing image.
 
-        -   implementing model classes must have `dim` class descriptor
+    .. note::
+        * implementing model classes should have ``dim`` class descriptor
     """
 
     def __init_subclass__(cls, name=None, dim=None, **kwargs):
@@ -98,7 +92,7 @@ class Embedder(Model):
         :type image: numpy.ndarray
 
         :param bounding_box: face bounding box
-        :type bounding_box: list | numpy.ndarray
+        :type bounding_box: tuple
 
         :returns: embedding vector
         :rtype: numpy.ndarray
@@ -112,8 +106,8 @@ class Embedder(Model):
         :param image: RGB image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
-        :param bounding_boxes: face bounding boxes with shape (n_faces, 4).
-        :type bounding_boxes: numpy.ndarray
+        :param bounding_boxes: face bounding boxes
+        :type bounding_boxes: list[tuple]
 
         :returns: array of embedding vectors with shape (n_faces, embedding_dim)
         :rtype: numpy.ndarray
@@ -122,59 +116,69 @@ class Embedder(Model):
         raise NotImplementedError()
 
 
-class Predictor(Model):
-    """This object is used to make predictions, to which class input face
-    embeddings belongs to, with some prediction score"""
+class Estimator(Model):
+    """Estimator model base class. Used to make predictions for face
+    embedding vectors.
+    """
 
-    def init_model(self, embedding_dim=None):
-        """Initialize and build predictor model (if required).
-        @override if predictor model requires separate method to init itself.
+    def fit(self, embeddings, class_names, **kwargs):
+        """Fit (train) estimator model with given embeddings for
+        given class names.
 
-        :param embedding_dim: optional
-        :type embedding_dim: int
-        """
-
-    def fit(self, embeddings, class_names):
-        """Fit predictor with given embeddings for given class names
+        Note that the passed number of samples for ``embbedings`` and
+        ``class_names`` has to be equal.
 
         :param embeddings: face embedding vectors
             with shape (n_samples, embedding_dim)
         :type embeddings: numpy.ndarray
 
         :param class_names: sequence of class names
-        :type class_names: list | numpy.ndarray
+        :type class_names: list
 
-        :returns self: object
+        :keyword kwargs: model and data dependent
 
-        :raises TrainError: if model fit (train) fails
+        :returns: self
+
+        :raises: TrainError
         """
 
         raise NotImplementedError()
 
     def predict(self, embeddings):
-        """Predict class name by given embeddings.
+        """Make predictions for given embeddings.
+
+        .. note::
+           Model previously has to be fitted.
 
         :param embeddings: array of embedding vectors
             with shape (n_faces, embedding_dim)
         :type embeddings: numpy.array
 
         :returns: prediction scores and class names
-        :rtype: tuple[numpy.ndarray, numpy.ndarray]
+        :rtype: tuple(list, list)
 
-        :raises TrainError: if model not fitted
+        :raises: TrainError
         """
 
         raise NotImplementedError()
 
-    def save(self, path):
-        """Persist predictor model state to given path"""
+    def save(self, dirname):
+        """Persist estimators's model state to given directory.
+
+        File naming format convention:
+          ``name = '%s.estimator.%s' % (self.name, ext)``
+        """
 
         raise NotImplementedError()
 
-    def load(self, path):
-        """Load predictor model state from given path"""
+    def load(self, dirname):
+        """Restore estimator's model state from given directory.
+
+        File naming format convention:
+            ``name = '%s.estimator.%s' % (self.name, ext)``
+        """
 
         raise NotImplementedError()
 
 
-import_submodules(__file__)
+import_package(__file__)

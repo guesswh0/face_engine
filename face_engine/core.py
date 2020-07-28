@@ -1,74 +1,63 @@
-# Copyright 2020 Daniyar Kussainov
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""
+FaceEngine core module.
+"""
 
 import os
+import pickle
 
 import numpy as np
 from PIL import Image
 
 from . import logger
-from .exceptions import FaceError, TrainError
-from .models import models
+from .exceptions import FaceNotFoundError, TrainError
+from .models import _models
+from .tools import imread
+
+
+def load_engine(filename):
+    """Loads and restores engine object from the file.
+
+    This function is convenient wrapper of pickle.load() function, and is used
+    to deserialize and restore the engine object from the persisted state.
+
+    Estimator model's state is loaded separately and is loaded only
+    if there is something saved before by :meth:`~FaceEngine.save` method.
+    Estimator model serialization (.save) and deserialization (.load) process
+    steps are the responsibility of it's inheriting class.
+
+    :param filename: serialized by :meth:`~FaceEngine.save` method file name
+    :type filename: str
+
+    :return: restored engine object
+    :rtype: :class:`.FaceEngine`
+    """
+
+    with open(filename, 'rb') as file:
+        engine = pickle.load(file)
+
+    # foolproof
+    if not isinstance(engine, FaceEngine):
+        raise TypeError("file %s could not be deserialized as "
+                        "FaceEngine instance" % filename)
+
+    # load estimator model's state only if there is something to restore
+    if engine.n_samples > 0:
+        # pass filename's directory name
+        engine._estimator.load(os.path.dirname(filename))
+    return engine
 
 
 class FaceEngine:
-    """Face recognition engine object.
+    """Face recognition engine base class.
 
-    Project main purpose is to simplify work with `face recognition problem`
-    computation core trio - detector, embedder, and predictor. FaceEngine
-    combines all of them in one interface model to simplify usage and
-    furthermore extends some features.
-
-    FaceEngine is working out of the box, with pre-defined default models. But
-    if you want to, you can work with your own pre-trained models for detector,
-    embedder or predictor. All you need to do is to implement model interfaces
-    Detector, Embedder or Predictor (see `models` package), and "register" it,
-    by importing your module or adding it to `PYTHONPATH` environment variable
-    or using appropriate convenient function `from face_engine.tools`.
-
-    From here you can use your model just by passing model name with
-    corresponding keyword argument of `__init__` method or setup it later by
-    calling corresponding setter method of FaceEngine object with model name
-    argument.
-
-    Examples:
-        To change model to dlib 'mmod' detector use:
-            >>> from face_engine import FaceEngine
-            >>> engine = FaceEngine()
-            >>> engine.detector = 'mmod'
-
-        To switch to your own model use corresponding setter method:
-            >>> from my_custom_models import my_custom_detector
-            >>> engine.detector = 'custom_detector'
-
-        To init with your own pre-trained detector use:
-            >>> from my_custom_models import my_custom_detector
-            >>> engine = FaceEngine(detector='custom_detector')
-
+    This object provides all steps and tools which are required to work with
+    face recognition task.
 
     Keyword arguments:
-        :param detector: face detector model to use
-        :type detector: str
-
-        :param embedder: face embedder model to use
-        :type embedder: str
-
-        :param predictor: face predictor model to use
-        :type predictor: str
-
-        :param limit: limit number of faces fed to predictor
-        :type limit: int
+        * detector (str) -- face detector model to use
+        * embedder (str) -- face embedder model to use
+        * estimator (str) -- face estimator model to use
+        * limit (int) -- limit number of faces fed to estimator
     """
 
     def __init__(self, **kwargs):
@@ -78,15 +67,43 @@ class FaceEngine:
         # computation core trio
         self.detector = kwargs.get('detector')
         self.embedder = kwargs.get('embedder')
-        self.predictor = kwargs.get('predictor')
-        # keep last fitted number of identities and samples
-        self.n_identities = 0
+        self.estimator = kwargs.get('estimator')
+        # keep last fitted number of classes and samples
+        self.n_classes = 0
         self.n_samples = 0
+
+    def __getstate__(self):
+        # copy the engine object's state from self.__dict__
+        # using copy to avoid modifying the original state
+        state = self.__dict__.copy()
+
+        # remove the model objects (unpicklable entries)
+        del state['_detector']
+        del state['_embedder']
+        del state['_estimator']
+
+        # persist the model objects names
+        state['detector'] = self.detector
+        state['embedder'] = self.embedder
+        state['estimator'] = self.estimator
+
+        # returns engine instance's lightweight state dictionary
+        # contents of the which will be used by pickle in .save() method
+        return state
+
+    def __setstate__(self, state):
+        # initialize engine models by their setter methods
+        self.detector = state.pop('detector')
+        self.embedder = state.pop('embedder')
+        self.estimator = state.pop('estimator')
+
+        # update rest attributes
+        self.__dict__.update(state)
 
     @property
     def detector(self):
         """
-        :returns: detector name
+        :return: detector model name
         :rtype: str
         """
 
@@ -95,9 +112,8 @@ class FaceEngine:
     @detector.setter
     def detector(self, name):
         """Face detector model to use:
-
-            -   'hog': dlib "Histogram Oriented Gradients" model (default).
-            -   'mmod': dlib "Max-Margin Object Detection" model.
+            - 'hog': dlib "Histogram Oriented Gradients" model (default).
+            - 'mmod': dlib "Max-Margin Object Detection" model.
 
         :param name: detector model name
         :type name: str
@@ -105,16 +121,17 @@ class FaceEngine:
 
         if not name:
             name = 'hog'
-        if name not in models:
-            logger.warning("Detector model '%s' not found!", name)
+        if name not in _models:
+            if name != 'hog':
+                logger.warning("Detector model '%s' not found!", name)
             name = 'abstract_detector'
-        model = models.get(name)
-        self._detector = model()
+        Detector = _models.get(name)
+        self._detector = Detector()
 
     @property
     def embedder(self):
         """
-        :returns: embedder model name
+        :return: embedder model name
         :rtype: str
         """
 
@@ -123,8 +140,7 @@ class FaceEngine:
     @embedder.setter
     def embedder(self, name):
         """Face embedder model to use:
-
-            -   'resnet': dlib ResNet model (default)
+            - 'resnet': dlib ResNet model (default)
 
         :param name: embedder model name
         :type name: str
@@ -132,182 +148,256 @@ class FaceEngine:
 
         if not name:
             name = 'resnet'
-        if name not in models:
-            logger.warning("Embedder model '%s' not found!", name)
+        if name not in _models:
+            if name != 'resnet':
+                logger.warning("Embedder model '%s' not found!", name)
             name = 'abstract_embedder'
-        model = models.get(name)
-        self._embedder = model()
+        Embedder = _models.get(name)
+        self._embedder = Embedder()
 
     @property
-    def predictor(self):
+    def estimator(self):
         """
-        :returns: predictor name
+        :return: estimator model name
         :rtype: str
         """
 
-        return self._predictor.name
+        return self._estimator.name
 
-    @predictor.setter
-    def predictor(self, name):
-        """Face predictor model to use:
+    @estimator.setter
+    def estimator(self, name):
+        """Estimator model to use:
+            - 'basic': linear comparing estimator (default)
 
-            -   'linear': linear comparing, by calculating `L2-norms` with
-            RBF kernel function (default)
-
-        :param name: predictor model name
+        :param name: estimator model name
         :type name: str
         """
 
         if not name:
-            name = 'linear'
-        if name not in models:
-            logger.warning("Predictor model '%s' not found!", name)
-            name = 'abstract_predictor'
-        model = models.get(name)
-        self._predictor = model()
+            name = 'basic'
+        if name not in _models:
+            if name != 'basic':
+                logger.warning("Estimator model '%s' not found!", name)
+            name = 'abstract_estimator'
+        Estimator = _models.get(name)
+        self._estimator = Estimator()
 
-    def fit(self, images, class_names, bounding_boxes=None):
-        """Fit face predictor model with given images for given class names.
+    def save(self, filename):
+        """Save engine object state to the file.
 
-            -   if 'bounding_boxes' presents skips bounding_box detections
+        Persisting the object state as lightweight engine instance which
+        contains only model name strings instead of model objects itself.
+        Upon loading model objects will have to be re-initialized.
+        """
 
-        ------------------------------------------------------------------------
+        # save estimator model's state only if there is something to persist
+        if self.n_samples > 0:
+            self._estimator.save(os.path.dirname(filename))
 
-        [*] To not to use large memory buffers (image arrays) using filenames
-            or url strings.
+        with open(filename, 'wb') as file:
+            pickle.dump(self, file)
 
-        [*] Expensive operation. Depends on the numbers of samples, and
-            bounding box presence.
+    def _fit(self, embeddings, class_names, **kwargs):
+        """Fit (train) estimator model with given embeddings for
+        given class names.
 
-        :param images: filenames or URLs of images
+        :param embeddings: face embedding vectors
+            with shape (n_samples, embedding_dim)
+        :type embeddings: numpy.ndarray | list
+
+        :param class_names: sequence of class names
+        :type class_names: list
+
+        :keyword kwargs: model and data dependent
+
+        :return: self
+
+        :raises: TrainError
+        """
+
+        if not isinstance(embeddings, np.ndarray):
+            embeddings = np.array(embeddings)
+
+        if len(embeddings) > self.limit:
+            raise TrainError('Enlarge buffer size')
+
+        # also may raise TrainError
+        self._estimator.fit(embeddings, class_names, **kwargs)
+        self.n_samples = len(embeddings)
+        self.n_classes = len(set(class_names))
+
+        return self
+
+    def fit(self, images, class_names, bounding_boxes=None, **kwargs):
+        """Fit (train) estimator model with given images for
+        given class names.
+
+        Estimator's :meth:`~face_engine.models.Estimator.fit` wrapping method.
+
+        .. note::
+            * the number of images and class_names has to be equal
+            * the image will be skipped if the face is not found inside
+            * the presence of 'bounding_boxes' accelerates process
+
+        [*] Uses array of file names or uri strings instead of large
+        memory buffers (image arrays).
+
+        :param images: image file names or uri strings
         :type images: list[str]
 
         :param class_names: sequence of class names
-        :type class_names: list | numpy.ndarray
+        :type class_names: list
 
         :param bounding_boxes: sequence of bounding boxes
-        :type bounding_boxes: list | numpy.ndarray
+        :type bounding_boxes: list[tuple]
 
-        :returns: self
+        :keyword kwargs: model and data dependent
 
-        :raises TrainError: if model fit (train) fails
-        or numbers of samples exceeds buffer size
+        :return: self
+
+        :raises: TrainError
         """
+
+        assert len(images) == len(class_names), (
+            "the number of images and class_names has to be equal")
 
         targets = list()
         embeddings = list()
 
         if bounding_boxes:
             for image, bb in zip(images, bounding_boxes):
-                img = np.asarray(Image.open(image))
+                img = imread(image)
                 embedding = self._embedder.compute_embedding(img, bb)
                 embeddings.append(embedding)
             targets = class_names
         else:
             for image, target in zip(images, class_names):
-                img = np.asarray(Image.open(image))
+                img = imread(image)
                 try:
                     _, bb = self._detector.detect_one(img)
                     embedding = self._embedder.compute_embedding(img, bb)
                     targets.append(target)
                     embeddings.append(embedding)
-                except FaceError:
+                except FaceNotFoundError:
+                    # if face not found in the image, skip it
                     continue
 
-        n_samples = len(targets)
-        n_identities = len(set(targets))
-        embeddings = np.array(embeddings)
-        targets = np.array(targets)
+        return self._fit(embeddings, targets, **kwargs)
 
-        if n_samples > self.limit:
-            raise TrainError('Enlarge buffer size')
+    def predict(self, embeddings):
+        """Make predictions for given embeddings.
 
-        # also may raise TrainError
-        self._predictor.fit(embeddings, targets)
+        Estimator's :meth:`~face_engine.models.Estimator.predict`
+        wrapping method.
 
-        self.n_samples = n_samples
-        self.n_identities = n_identities
-        return self
+        :param embeddings: array of embedding vectors
+            with shape (n_faces, embedding_dim)
+        :type embeddings: numpy.ndarray
 
-    def predict(self, image_or_embeddings):
-        """`Predictor`s wrapping method to predict class name by given image or
-        embedding vectors. If fed with image, default values for `find_faces`
-        and `compute_embeddings` will be used.
+        :returns: prediction scores and class names
+        :rtype: tuple(list, list)
 
-        [*] may raise FaceError only if had fed with image.
-
-        :param image_or_embeddings: RGB image or array of embedding
-        vectors with shape (n_faces, embedding_dim)
-        :type image_or_embeddings: numpy.array
-
-        :returns: predicted similarity scores and class names
-        :rtype: tuple[numpy.ndarray, numpy.ndarray]
-
-        :raises TrainError: if model not fitted
-        :raises FaceError: if there is no faces in the image.
+        :raises: TrainError
         """
 
-        # check if arg is image
-        if len(image_or_embeddings.shape) > 2:
-            _, bounding_boxes = self.find_faces(image_or_embeddings)
-            embeddings = self.compute_embeddings(image_or_embeddings,
-                                                 bounding_boxes)
-            scores, class_names = self._predictor.predict(embeddings)
-        else:
-            scores, class_names = self._predictor.predict(image_or_embeddings)
-        return scores, class_names
+        return self._estimator.predict(embeddings)
+
+    def make_prediction(self, image, **kwargs):
+        """Lazy prediction method to make prediction by given image.
+
+        Convenient wrapper method to go over all steps of face recognition
+        problem by one call.
+
+        In particular:
+            1. :meth:`.find_faces` - detector
+            2. :meth:`.compute_embeddings` - embedder
+            3. :meth:`.predict` - estimator
+
+        Keyword arguments are all parameters of :meth:`.find_faces` method.
+        Returns image all face bounding boxes with predicted class names.
+        May raise same exceptions of all calling methods.
+
+        :param image: RGB image content or image file uri.
+        :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
+
+        :returns: class names and bounding boxes
+        :rtype: tuple(list, list)
+
+        :raises: FaceNotFoundError
+        :raises: TrainError
+        """
+
+        if not hasattr(image, 'shape'):
+            image = imread(image)
+
+        bounding_boxes = self.find_faces(image, **kwargs)[1]
+        embeddings = self.compute_embeddings(image, bounding_boxes)
+        class_names = self.predict(embeddings)[1]
+        return class_names, bounding_boxes
 
     def find_face(self, image, scale=None, normalize=False):
-        """Find one face in the image. 'Detector's wrapping method.
-        Used to find the image largest face bounding box.
+        """Find one face in the image.
 
-        :param image: RGB Image with shape (rows, cols, 3)
-        :type image: numpy.ndarray
+        .. note::
+           If the image contains multiple faces, detects image
+           largest face bounding box.
+
+        Detector's :meth:`~face_engine.models.Detector.detect_one`
+        wrapping method.
+
+        :param image: RGB image content or image file uri.
+        :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
 
         :param scale: scale image by a certain factor, value > 0
         :type scale: float
 
         :param normalize: normalize output bounding box
+        :type normalize: bool
 
-        :returns confidence score and bounding box
-        :rtype tuple[numpy.ndarray, numpy.ndarray]
+        :returns: confidence score and bounding box
+        :rtype: tuple(float, tuple)
 
-        :raises FaceError: if there is no face in the image
+        :raises: FaceNotFoundError
         """
 
-        img_size = np.asarray(image.shape)[0:2]
+        if not hasattr(image, 'shape'):
+            image = imread(image)
+
+        # original image height and width
+        height, width = image.shape[0:2]
+
         if scale:
-            rescaled_img = np.uint8(
-                Image.fromarray(image).resize(img_size * scale))
-            confidence, bounding_box = self._detector.detect_one(rescaled_img)
+            size = (int(width * scale), int(height * scale))
+            image = np.uint8(Image.fromarray(image).resize(size))
+            confidence, bounding_box = self._detector.detect_one(image)
             # scale bounding_box to original image size
-            bounding_box = (bounding_box / scale).astype(np.uint16)
-            # bind to image size (just in case)
-            bounding_box[0] = np.maximum(bounding_box[0], 0)
-            bounding_box[1] = np.maximum(bounding_box[1], 0)
-            bounding_box[2] = np.minimum(bounding_box[2], img_size[1])
-            bounding_box[3] = np.minimum(bounding_box[3], img_size[0])
+            bounding_box = (max(bounding_box[0] // scale, 0),
+                            max(bounding_box[1] // scale, 0),
+                            min(bounding_box[2] // scale, width),
+                            min(bounding_box[3] // scale, height))
         else:
             confidence, bounding_box = self._detector.detect_one(image)
 
         if normalize:
-            bounding_box = bounding_box.astype(np.float32)
-            bounding_box[0] = bounding_box[0] / img_size[1]
-            bounding_box[1] = bounding_box[1] / img_size[0]
-            bounding_box[2] = bounding_box[2] / img_size[1]
-            bounding_box[3] = bounding_box[3] / img_size[0]
+            bounding_box = (bounding_box[0] / width,
+                            bounding_box[1] / height,
+                            bounding_box[2] / width,
+                            bounding_box[3] / height)
         return confidence, bounding_box
 
     def find_faces(self, image, roi=None, scale=None, normalize=False):
-        """ Find multiple faces in the image. 'Detector's wrapping method.
-            Used to find faces bounding boxes of in the image, with several
-            pre and post-processing abilities.
+        """Find multiple faces in the image.
 
-        :param image: RGB Image with shape (rows, cols, 3)
-        :type image: numpy.ndarray
+        Used to find all faces bounding boxes in the image.
 
-        :param roi: region of interest, format (left, top, right, bottom)
-            i.e two points of rectangle
+        Detector's :meth:`~face_engine.models.Detector.detect_all`
+        wrapping method.
+
+        :param image: RGB image content or image file uri.
+        :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
+
+        :param roi: region of interest rectangle,
+            format (left, upper, right, lower)
         :type roi: tuple | list
 
         :param scale: scale image by a certain factor, value > 0
@@ -317,69 +407,83 @@ class FaceEngine:
         :type normalize: bool
 
         :returns: confidence scores and bounding boxes
-        :rtype tuple[numpy.ndarray, numpy.ndarray]
+        :rtype: tuple(list, list[tuple])
 
-        :raises FaceError: if there is no faces in the image
+        :raises: FaceNotFoundError
         """
 
-        img_size = np.asarray(image.shape)[0:2]
+        if not hasattr(image, 'shape'):
+            image = imread(image)
+
+        # original image height and width
+        height, width = image.shape[0:2]
+
         # crop image by region of interest
         if roi:
             image = image[roi[1]:roi[3], roi[0]:roi[2], :]
 
         if scale:
-            rescaled_img = np.uint8(
-                Image.fromarray(image).resize(img_size * scale))
-
-            confidences, bounding_boxes = \
-                self._detector.detect_all(rescaled_img)
-            # scale bounding_boxes to original image size
-            bounding_boxes = (bounding_boxes / scale).astype(np.uint16)
-            # bind to image size (just in case)
-            bounding_boxes[:, 0] = np.maximum(bounding_boxes[:, 0], 0)
-            bounding_boxes[:, 1] = np.maximum(bounding_boxes[:, 1], 0)
-            bounding_boxes[:, 2] = np.minimum(bounding_boxes[:, 2], img_size[1])
-            bounding_boxes[:, 3] = np.minimum(bounding_boxes[:, 3], img_size[0])
+            h, w = image.shape[0:2]
+            size = (int(w * scale), int(h * scale))
+            image = np.uint8(Image.fromarray(image).resize(size))
+            confidences, bounding_boxes = self._detector.detect_all(image)
+            # scale back bounding_boxes to image size
+            bounding_boxes = [(
+                max(int(bounding_box[0] / scale), 0),
+                max(int(bounding_box[1] / scale), 0),
+                min(int(bounding_box[2] / scale), w),
+                min(int(bounding_box[3] / scale), h))
+                for bounding_box in bounding_boxes]
         else:
             confidences, bounding_boxes = self._detector.detect_all(image)
 
         # adopt bounding box to original image size
         if roi:
-            bounding_boxes += np.array(roi[:2] * 2, dtype=np.uint16)
+            from operator import add
+
+            roi = roi[:2] * 2
+            bounding_boxes = [
+                tuple(map(add, bounding_box, roi))
+                for bounding_box in bounding_boxes]
 
         if normalize:
-            bounding_boxes = bounding_boxes.astype(np.float32)
-            bounding_boxes[:, 0] = bounding_boxes[:, 0] / img_size[1]
-            bounding_boxes[:, 1] = bounding_boxes[:, 1] / img_size[0]
-            bounding_boxes[:, 2] = bounding_boxes[:, 2] / img_size[1]
-            bounding_boxes[:, 3] = bounding_boxes[:, 3] / img_size[0]
+            bounding_boxes = [(
+                bounding_box[0] / width,
+                bounding_box[1] / height,
+                bounding_box[2] / width,
+                bounding_box[3] / height)
+                for bounding_box in bounding_boxes]
         return confidences, bounding_boxes
 
     def compute_embedding(self, image, bounding_box):
-        """Embedders wrapping method.
-        Compute image embedding for given bounding box.
+        """Compute image embedding for given bounding box.
 
-        :param image: RGB Image with shape (rows, cols, 3)
+        Embedder's :meth:`~face_engine.models.Embedder.compute_embedding`
+        wrapping method.
+
+        :param image: RGB image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
         :param bounding_box: face bounding box
-        :type bounding_box: list | numpy.ndarray
+        :type bounding_box: tuple
 
-        :returns: embedding vector
+        :return: embedding vector
         :rtype: numpy.ndarray
         """
 
         return self._embedder.compute_embedding(image, bounding_box)
 
     def compute_embeddings(self, image, bounding_boxes):
-        """Embedders wrapping method.
-        Compute image embeddings for given bounding boxes.
+        """ Compute image embeddings for given bounding boxes.
 
-        :param image: RGB Image with shape (rows, cols, 3)
+        Embedder's :meth:`~face_engine.models.Embedder.compute_embeddings`
+        wrapping method.
+
+        :param image: RGB image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
         :param bounding_boxes: face bounding boxes
-        :type bounding_boxes: numpy.ndarray
+        :type bounding_boxes: list[tuple]
 
         :returns: array of embedding vectors with shape (n_faces, embedding_dim)
         :rtype: numpy.ndarray
@@ -387,36 +491,41 @@ class FaceEngine:
 
         return self._embedder.compute_embeddings(image, bounding_boxes)
 
-    def load(self, filename):
-        """Load model state - helper method"""
+    def compare_faces(self, source, target):
+        """Compare a face in the source image with each face in the
+        target image, to find out the most similar one.
 
-        import pickle
+        .. note::
+           If the source image contains multiple faces, detects image
+           largest face bounding box.
 
-        with open(filename, 'rb') as file:
-            model_state = pickle.load(file)
-        self.__dict__.update(model_state)
-        self.detector = model_state['detector']
-        self.embedder = model_state['embedder']
-        self.predictor = model_state['predictor']
+        Similarity score is estimated with RBF kernel.
 
-        # load predictor state
-        self._predictor.load(os.path.dirname(filename))
+        References:
+            1. https://en.wikipedia.org/wiki/Euclidean_distance
+            2. https://en.wikipedia.org/wiki/Radial_basis_function_kernel
 
-    def save(self, filename):
-        """Save model state - helper method"""
+        :param source: RGB image content or image file uri.
+        :type source: numpy.ndarray | {str, bytes, file, os.PathLike}
 
-        import pickle
+        :param target: RGB image content or image file uri.
+        :type target: numpy.ndarray | {str, bytes, file, os.PathLike}
 
-        _copy = self.__dict__.copy()
-        # cleanup and reassign models by their names
-        del _copy['_detector']
-        _copy['detector'] = self.detector
-        del _copy['_embedder']
-        _copy['embedder'] = self.embedder
-        del _copy['_predictor']
-        _copy['predictor'] = self.predictor
+        :returns: similarity score and bounding box
+        :rtype: tuple(float, tuple)
+        """
 
-        # save predictor state
-        self._predictor.save(os.path.dirname(filename))
-        with open(filename, 'wb') as file:
-            pickle.dump(_copy, file)
+        if not hasattr(source, 'shape'):
+            source = imread(source)
+        source_bb = self._detector.detect_one(source)[1]
+        source_vector = self._embedder.compute_embedding(source, source_bb)
+
+        if not hasattr(target, 'shape'):
+            target = imread(target)
+        target_bbs = self._detector.detect_all(target)[1]
+        target_vector = self._embedder.compute_embeddings(target, target_bbs)
+
+        distances = np.linalg.norm(target_vector - source_vector, axis=1)
+        index = np.argmin(distances)
+        score = np.exp(-0.5 * distances[index] ** 2)
+        return score, target_bbs[index]

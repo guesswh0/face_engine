@@ -1,209 +1,316 @@
-import os
+import logging
 import unittest
 
-import numpy as np
-from PIL import Image
-
-try:
-    import dlib
-except ImportError:
-    dlib = None
-else:
-    from face_engine import fetching
-
-    # fetch if dlib installed
-    fetching.fetch_models()
-    fetching.fetch_images()
-
-from face_engine import FaceEngine, RESOURCES
-from face_engine.exceptions import FaceError, TrainError
+from face_engine import FaceEngine
+from face_engine.exceptions import FaceNotFoundError, TrainError
+from face_engine.models import Detector, Embedder, Estimator
+from face_engine.tools import imread
+from tests import TestCase, dlib
 
 
-class TestFaceEngine(unittest.TestCase):
+class TestFaceEngine(TestCase):
 
-    def setUp(self) -> None:
-        images = os.path.join(RESOURCES, 'images')
-        self.images = [
-            os.path.join(images, image) for image in sorted(os.listdir(images))
-        ]
-        self.bubbles1 = os.path.join(images, 'bubbles1.jpg')
-        self.bubbles2 = os.path.join(images, 'bubbles2.jpg')
-        self.cat = os.path.join(images, 'cat.jpg')
-        self.dog = os.path.join(images, 'dog.jpg')
-        self.drive = os.path.join(images, 'drive.jpg')
-        self.family = os.path.join(images, 'family.jpg')
-        self.default_engine = FaceEngine()
+    def setUp(self):
+        self.test_engine = FaceEngine()
+        self.empty_engine = FaceEngine(
+            detector='abstract_detector',
+            embedder='abstract_embedder',
+            estimator='abstract_estimator'
+        )
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_init_default_models(self):
-        with self.subTest(detector='hog'):
-            self.assertEqual(self.default_engine.detector, 'hog')
-        with self.subTest(embedder='resnet'):
-            self.assertEqual(self.default_engine.embedder, 'resnet')
-        with self.subTest(predictor='linear'):
-            self.assertEqual(self.default_engine.predictor, 'linear')
+        self.assertEqual(self.test_engine.detector, 'hog')
+        self.assertEqual(self.test_engine.embedder, 'resnet')
+        self.assertEqual(self.test_engine.estimator, 'basic')
 
     @unittest.skipIf(dlib, "dlib package is installed")
-    def test_init_implicit_abstract_models(self):
-        with self.subTest(detector='abstract_detector'):
-            self.assertEqual(self.default_engine.detector, 'abstract_detector')
-        with self.subTest(embedder='abstract_embedder'):
-            self.assertEqual(self.default_engine.embedder, 'abstract_embedder')
+    def test_init_default_models_without_dlib(self):
+        self.assertEqual(self.test_engine.detector, 'abstract_detector')
+        self.assertEqual(self.test_engine.embedder, 'abstract_embedder')
+        self.assertEqual(self.test_engine.estimator, 'basic')
 
-    def test_init_explicit_abstract_models(self):
+    def test_init_abstract_models(self):
+        self.assertEqual(self.empty_engine.detector, 'abstract_detector')
+        self.assertEqual(self.empty_engine.embedder, 'abstract_embedder')
+        self.assertEqual(self.empty_engine.estimator, 'abstract_estimator')
+
+    def test_explicit_init_with_not_existing_models(self):
+        logging.disable(logging.WARNING)
         engine = FaceEngine(
-            detector='abstract_detector',
-            embedder='abstract_embedder',
-            predictor='abstract_predictor'
+            detector='my_detector',
+            embedder='my_embedder',
+            estimator='my_estimator'
         )
-        with self.subTest(detector='abstract_detector'):
-            self.assertEqual(engine.detector, 'abstract_detector')
-        with self.subTest(embedder='abstract_embedder'):
-            self.assertEqual(engine.embedder, 'abstract_embedder')
-        with self.subTest(predictor='abstract_predictor'):
-            self.assertEqual(engine.predictor, 'abstract_predictor')
-
-    @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_init_limit_param(self):
-        engine = FaceEngine(limit=2)
-        with self.assertRaises(TrainError):
-            images = [self.bubbles1, self.bubbles2, self.family]
-            classes = [0, 0, 1]
-            engine.fit(images, classes)
-
-    def test_setter_detector_model(self):
-        engine = FaceEngine()
-        engine.detector = 'abstract_detector'
         self.assertEqual(engine.detector, 'abstract_detector')
-
-    def test_setter_embedder_model(self):
-        engine = FaceEngine()
-        engine.embedder = 'abstract_embedder'
         self.assertEqual(engine.embedder, 'abstract_embedder')
-
-    def test_setter_predictor_model(self):
-        engine = FaceEngine()
-        engine.predictor = 'abstract_predictor'
-        self.assertEqual(engine.predictor, 'abstract_predictor')
+        self.assertEqual(engine.estimator, 'abstract_estimator')
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_setter_dlib_detector_model(self):
-        engine = FaceEngine()
-        engine.detector = 'mmod'
-        self.assertEqual(engine.detector, 'mmod')
+    def test_setters_with_defaults(self):
+        self.empty_engine.detector = 'hog'
+        self.empty_engine.embedder = 'resnet'
+        self.empty_engine.estimator = 'basic'
+        self.assertEqual(self.empty_engine.detector, 'hog')
+        self.assertIsInstance(self.empty_engine._detector, Detector)
+        self.assertEqual(self.empty_engine.embedder, 'resnet')
+        self.assertIsInstance(self.empty_engine._embedder, Embedder)
+        self.assertEqual(self.empty_engine.estimator, 'basic')
+        self.assertIsInstance(self.empty_engine._estimator, Estimator)
 
-    def test_getter_detector_model(self):
-        engine = FaceEngine()
-        engine.detector = 'abstract_detector'
-        self.assertIsInstance(engine.detector, str)
+    def test_setters_with_abstract_models(self):
+        self.test_engine.detector = 'abstract_detector'
+        self.test_engine.embedder = 'abstract_embedder'
+        self.test_engine.estimator = 'abstract_estimator'
+        self.assertIsInstance(self.test_engine._detector, Detector)
+        self.assertEqual(self.test_engine.detector, 'abstract_detector')
+        self.assertIsInstance(self.test_engine._embedder, Embedder)
+        self.assertEqual(self.test_engine.embedder, 'abstract_embedder')
+        self.assertIsInstance(self.test_engine._estimator, Estimator)
+        self.assertEqual(self.test_engine.estimator, 'abstract_estimator')
 
-    def test_getter_embedder_model(self):
-        engine = FaceEngine()
-        engine.embedder = 'abstract_embedder'
-        self.assertIsInstance(engine.embedder, str)
+    def test_setters_with_not_existing_models(self):
+        logging.disable(logging.WARNING)
+        self.empty_engine.detector = 'my_detector'
+        self.empty_engine.embedder = 'my_embedder'
+        self.empty_engine.estimator = 'my_estimator'
+        self.assertNotEqual(self.empty_engine.detector, 'my_detector')
+        self.assertEqual(self.empty_engine.detector, 'abstract_detector')
+        self.assertNotEqual(self.empty_engine.embedder, 'my_embedder')
+        self.assertEqual(self.empty_engine.embedder, 'abstract_embedder')
+        self.assertNotEqual(self.empty_engine.estimator, 'my_estimator')
+        self.assertEqual(self.empty_engine.estimator, 'abstract_estimator')
 
-    def test_getter_predictor_model(self):
-        engine = FaceEngine()
-        engine.predictor = 'abstract_predictor'
-        self.assertIsInstance(engine.predictor, str)
+    @unittest.skipIf(dlib, "dlib package is installed")
+    def test_setters_with_none_without_dlib(self):
+        self.test_engine.detector = None
+        self.test_engine.embedder = None
+        self.test_engine.estimator = None
+        self.assertEqual(self.test_engine.detector, 'abstract_detector')
+        self.assertEqual(self.test_engine.embedder, 'abstract_embedder')
+        self.assertEqual(self.test_engine.estimator, 'basic')
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_fit(self):
-        images = [self.bubbles1, self.bubbles2, self.family]
-        classes = [0, 0, 1]
-        self.default_engine.fit(images, classes)
-        with self.subTest(n_samples=3):
-            self.assertEqual(self.default_engine.n_samples, 3)
-        with self.subTest(n_identities=2):
-            self.assertEqual(self.default_engine.n_identities, 2)
+    def test_setters_with_none_with_dlib(self):
+        self.test_engine.detector = None
+        self.test_engine.embedder = None
+        self.test_engine.estimator = None
+        self.assertEqual(self.test_engine.detector, 'hog')
+        self.assertEqual(self.test_engine.embedder, 'resnet')
+        self.assertEqual(self.test_engine.estimator, 'basic')
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_getters(self):
+        self.assertIsInstance(self.test_engine.detector, str)
+        self.assertIsInstance(self.test_engine.embedder, str)
+        self.assertIsInstance(self.test_engine.estimator, str)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_fit_bubbles(self):
+        images = [self.bubbles1, self.bubbles2]
+        classes = [0, 0]
+        self.test_engine.fit(images, classes)
+        self.assertEqual(self.test_engine.n_samples, 2)
+        self.assertEqual(self.test_engine.n_classes, 1)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_fit_raises_train_error(self):
+        self.test_engine.limit = 1
+        images = [self.bubbles1, self.bubbles2]
+        classes = [0, 0]
+        with self.assertRaises(TrainError):
+            self.test_engine.fit(images, classes)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_fit_with_bounding_boxes(self):
-        images = [self.bubbles1, self.bubbles2, self.family]
+        images = [self.bubbles1, self.bubbles2, self.drive]
         classes = [0, 0, 1]
-        bbs = []
-        for img in images:
-            _, bb = self.default_engine.find_face(np.asarray(Image.open(img)))
-            bbs.append(bb)
-        self.default_engine.fit(images, classes, bbs)
-        with self.subTest(n_samples=3):
-            self.assertEqual(self.default_engine.n_samples, 3)
-        with self.subTest(n_identities=2):
-            self.assertEqual(self.default_engine.n_identities, 2)
+        bbs = [(278, 132, 618, 471), (270, 75, 406, 211), (205, 157, 440, 393)]
+        self.test_engine.fit(images, classes, bbs)
+        self.assertEqual(self.test_engine.n_samples, 3)
+        self.assertEqual(self.test_engine.n_classes, 2)
+
+    def test_fit_raises_assertion_error(self):
+        images = [self.bubbles1, self.family, self.drive]
+        classes = [0, 1]
+        with self.assertRaises(AssertionError):
+            self.test_engine.fit(images, classes)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_face_returns_bounding_box(self):
-        bubbles1 = np.asarray(Image.open(self.bubbles1))
-        _, bb = self.default_engine.find_face(bubbles1)
-        # returns single bounding box
+    def test_predict_return_data_types(self):
+        self.test_engine.fit([self.bubbles1], [0], [(278, 132, 618, 471)])
+        image = imread(self.bubbles1)
+        bb = self.test_engine.find_face(image)[1]
+        embeddings = self.test_engine.compute_embedding(image, bb)
+        data = self.test_engine.predict(embeddings)
+        self.assertEqual(len(data), 2)
+        self.assertIsInstance(data, tuple)
+        self.assertIsInstance(data[0], list)
+        self.assertIsInstance(data[1], list)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_predict_before_fit_raises_train_error(self):
+        image = imread(self.bubbles1)
+        bb = self.test_engine.find_face(image)[1]
+        embeddings = self.test_engine.compute_embedding(image, bb)
+        with self.assertRaises(TrainError):
+            self.test_engine.predict(embeddings)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_make_prediction_return_data_types(self):
+        self.test_engine.fit([self.bubbles1], [0], [(278, 132, 618, 471)])
+        data = self.test_engine.make_prediction(self.bubbles2)
+        self.assertEqual(len(data), 2)
+        self.assertIsInstance(data, tuple)
+        self.assertIsInstance(data[0], list)
+        self.assertIsInstance(data[1], list)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_make_prediction_before_fit_raises_train_error(self):
+        with self.assertRaises(TrainError):
+            self.test_engine.make_prediction(self.bubbles1)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_make_prediction_before_fit_raises_face_not_found_error(self):
+        with self.assertRaises(FaceNotFoundError):
+            self.test_engine.make_prediction(self.cat)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_find_face_return_data_types(self):
+        data = self.test_engine.find_face(self.bubbles1)
+        self.assertEqual(len(data), 2)
+        self.assertIsInstance(data, tuple)
+        self.assertIsNone(data[0], None)
+        self.assertIsInstance(data[1], tuple)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_find_face_return_single_bounding_box(self):
+        bb = self.test_engine.find_face(self.bubbles1)[1]
+        # returns single bounding box of 4 points
         self.assertEqual(len(bb), 4)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_face_normalize_param(self):
-        family = np.asarray(Image.open(self.family))
-        _, bb = self.default_engine.find_face(family, normalize=True)
-        for point in bb:
-            with self.subTest():
-                self.assertLess(point, 1)
+    def test_find_face_with_image_content(self):
+        content = imread(self.family)
+        data = self.test_engine.find_face(content)
+        self.assertIsNotNone(data)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_face_raises_face_error(self):
-        cat = np.asarray(Image.open(self.cat))
-        with self.assertRaises(FaceError):
-            _, bb = self.default_engine.find_face(cat)
+    def test_find_face_with_image_uri(self):
+        data = self.test_engine.find_face(self.bubbles1)
+        self.assertIsNotNone(data)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_faces_returns_bounding_boxes(self):
+    def test_find_face_with_normalize(self):
+        bb = self.test_engine.find_face(self.family, normalize=True)[1]
+        self.assertTrue(all(p <= 1.0 for p in bb))
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_find_face_raises_face_not_found_error(self):
+        with self.assertRaises(FaceNotFoundError):
+            self.test_engine.find_face(self.cat)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_find_faces_return_data_types(self):
+        data = self.test_engine.find_faces(self.family)
+        self.assertEqual(len(data), 2)
+        self.assertIsInstance(data, tuple)
+        self.assertIsNone(data[0], None)
+        self.assertIsInstance(data[1], list)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_find_faces_returns_multiple_bounding_boxes(self):
+        bbs = self.test_engine.find_faces(self.family)[1]
         # family image has three faces
-        family = np.asarray(Image.open(self.family))
-        _, bbs = self.default_engine.find_faces(family)
-        self.assertGreaterEqual(len(bbs), 1)
+        self.assertEqual(len(bbs), 3)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_faces_roi_param(self):
-        bubbles1 = np.asarray(Image.open(self.bubbles1))
-        h, w = bubbles1.shape[:2]
+    def test_find_faces_with_image_content(self):
+        content = imread(self.family)
+        data = self.test_engine.find_faces(content)
+        self.assertIsNotNone(data)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_find_faces_with_image_uri(self):
+        data = self.test_engine.find_faces(self.family)
+        self.assertIsNotNone(data)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_find_faces_with_roi(self):
+        image = imread(self.bubbles1)
+        h, w = image.shape[:2]
+        # face is in the first half (by height)
         with self.subTest(roi='first_half'):
-            _, bbs = self.default_engine.find_faces(
-                bubbles1, roi=(0, 0, w, h // 2))
+            bbs = self.test_engine.find_faces(image, roi=(0, 0, w, h // 2))[1]
             self.assertEqual(len(bbs), 1)
+        # no face in the second half (by height)
         with self.subTest(roi='second_half'):
-            with self.assertRaises(FaceError):
-                _, bbs = self.default_engine.find_faces(
-                    bubbles1, roi=(0, h // 2, w, h))
+            with self.assertRaises(FaceNotFoundError):
+                self.test_engine.find_faces(image, roi=(0, h // 2, w, h))
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_faces_normalize_param(self):
-        family = np.asarray(Image.open(self.family))
-        _, bbs = self.default_engine.find_faces(family, normalize=True)
-        # check only first bounding box
-        for point in bbs[0]:
-            with self.subTest():
-                self.assertLess(point, 1)
+    def test_find_faces_with_normalize(self):
+        bbs = self.test_engine.find_faces(self.family, normalize=True)[1]
+        self.assertTrue(all(all(p <= 1.0 for p in bb) for bb in bbs))
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_faces_raises_face_error(self):
-        cat = np.asarray(Image.open(self.cat))
-        with self.assertRaises(FaceError):
-            _, bbs = self.default_engine.find_faces(cat)
+    def test_find_faces_raises_face_not_found_error(self):
+        with self.assertRaises(FaceNotFoundError):
+            self.test_engine.find_faces(self.cat)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_find_faces_params_by_iou(self):
+        """Test find faces with params scale / roi / scale with roi
+        returning bounding boxes by comparing them to original
+        bounding box by IoU (Intersection over Union) value.
+
+        Reference:
+            https://en.wikipedia.org/wiki/Jaccard_index
+        """
+
+        image = imread(self.bubbles1)
+        origin = self.test_engine.find_faces(image)[1][0]
+        origin_area = (origin[2] - origin[0] + 1) * (origin[3] - origin[1] + 1)
+
+        def get_iou(bb):
+            area = (bb[2] - bb[0] + 1) * (bb[3] - bb[1] + 1)
+            left = max(origin[0], bb[0])
+            upper = max(origin[1], bb[1])
+            right = min(origin[2], bb[2])
+            lower = min(origin[3], bb[3])
+            intersection = max(0, right - left + 1) * max(0, lower - upper + 1)
+            return intersection / float(origin_area + area - intersection)
+
+        # freeze params to hog detector
+        scale = 0.7
+        h, w = image.shape[:2]
+        roi = (0, 0, w - 200, h // 2)
+        # only scale param
+        bb1 = self.test_engine.find_faces(image, scale=scale)[1][0]
+        # only roi param
+        bb2 = self.test_engine.find_faces(image, roi=roi)[1][0]
+        # scale with roi param
+        bb3 = self.test_engine.find_faces(image, roi=roi, scale=scale)[1][0]
+        threshold = 0.8
+        self.assertGreaterEqual(get_iou(bb1), threshold)
+        self.assertGreaterEqual(get_iou(bb2), threshold)
+        self.assertGreaterEqual(get_iou(bb3), threshold)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_compute_embedding_vector_dimension(self):
-        bubbles1 = np.asarray(Image.open(self.bubbles1))
-        _, bb = self.default_engine.find_face(bubbles1)
-        embedding = self.default_engine.compute_embedding(bubbles1, bb)
+        bubbles1 = imread(self.bubbles1)
+        bb = self.test_engine.find_face(bubbles1)[1]
+        embedding = self.test_engine.compute_embedding(bubbles1, bb)
         self.assertEqual(
-            embedding.size, self.default_engine._embedder.embedding_dim
-        )
+            embedding.size, self.test_engine._embedder.embedding_dim)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_compute_embeddings_vectors_dimension(self):
-        family = np.asarray(Image.open(self.family))
-        _, bbs = self.default_engine.find_faces(family)
-        embeddings = self.default_engine.compute_embeddings(family, bbs)
+        family = imread(self.family)
+        bbs = self.test_engine.find_faces(family)[1]
+        embeddings = self.test_engine.compute_embeddings(family, bbs)
         self.assertEqual(
-            embeddings.shape[1], self.default_engine._embedder.embedding_dim
-        )
+            embeddings.shape[1], self.test_engine._embedder.embedding_dim)
 
 
 if __name__ == '__main__':
