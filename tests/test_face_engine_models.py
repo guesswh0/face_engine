@@ -4,7 +4,8 @@ import numpy as np
 
 from extra.dataset import load_dataset
 from face_engine.exceptions import FaceNotFoundError
-from face_engine.models import Detector, Embedder, Estimator, BasicEstimator
+from face_engine.models import Detector, Embedder, Estimator
+from face_engine.models.basic_estimator import BasicEstimator
 from face_engine.tools import imread
 from tests import TestCase, dlib
 

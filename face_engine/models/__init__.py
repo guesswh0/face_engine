@@ -2,15 +2,10 @@
 FaceEngine models API.
 """
 
-__all__ = ['Detector', 'Embedder', 'Estimator',
-           '_models', 'compare', 'BasicEstimator']
-
-import os
-import pickle
+__all__ = ['Detector', 'Embedder', 'Estimator', '_models']
 
 import numpy as np
 
-from face_engine.exceptions import TrainError
 from face_engine.tools import import_package
 
 _models = {}
@@ -183,76 +178,6 @@ class Estimator(Model):
         """
 
         raise NotImplementedError()
-
-
-def compare(source, target):
-    """Compare vectors OvR. Returns the most similar target vector
-    index and score value.
-
-    Compares source vector with each target vectors by calculating
-    euclidean distances (L2-norms).
-
-    Similarity score is estimated with RBF kernel function.
-
-    References:
-        [1] https://en.wikipedia.org/wiki/Euclidean_distance
-        [2] https://en.wikipedia.org/wiki/Radial_basis_function_kernel
-
-    :param source: source vector of shape (vector_dim,)
-    :type source: numpy.ndarray
-
-    :param target: target vectors of shape (n_samples, vector_dim)
-    :type target: numpy.ndarray
-
-    :returns: index and similarity score
-    :rtype: tuple(int, float)
-    """
-
-    distances = np.linalg.norm(target - source, axis=1)
-    index = np.argmin(distances)
-    score = np.exp(-0.5 * distances[index] ** 2)
-    return index, score
-
-
-class BasicEstimator(Estimator, name='basic'):
-    """Basic estimator model, make predictions by linear comparing each source
-    embedding vector with each fitted embedding vectors.
-
-    Model is using python pickle module to persist estimator state. Default
-    file name is 'basic.estimator.p'.
-
-    (*) This model is used as FaceEngine default estimator.
-    """
-
-    def __init__(self):
-        self.embeddings = None
-        self.class_names = None
-
-    def fit(self, embeddings, class_names, **kwargs):
-        self.embeddings = embeddings
-        self.class_names = class_names
-
-    def predict(self, embeddings):
-        if self.class_names is None:
-            raise TrainError('Model is not fitted yet!')
-
-        scores = []
-        class_names = []
-        for embedding in embeddings:
-            index, score = compare(embedding, self.embeddings)
-            scores.append(score)
-            class_names.append(self.class_names[index])
-        return scores, class_names
-
-    def save(self, dirname):
-        name = '%s.estimator.%s' % (self.name, 'p')
-        with open(os.path.join(dirname, name), 'wb') as file:
-            pickle.dump(self.__dict__, file)
-
-    def load(self, dirname):
-        name = '%s.estimator.%s' % (self.name, 'p')
-        with open(os.path.join(dirname, name), 'rb') as file:
-            self.__dict__.update(pickle.load(file))
 
 
 import_package(__file__)
