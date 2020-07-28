@@ -28,9 +28,9 @@ setup(
     url="https://github.com/guesswh0/face_engine",
     packages=find_packages(exclude=['tests', 'extra']),
     install_requires=[
-        'numpy~=1.18.0',
-        'pillow~=7.0.0',
-        'tqdm~=4.44.0'
+        'numpy>=1.18.0',
+        'pillow>=7.0.0',
+        'tqdm>=4.44.0'
     ],
     extras_require={
         'dev': [
