@@ -57,13 +57,11 @@ class FaceEngine:
         * detector (str) -- face detector model to use
         * embedder (str) -- face embedder model to use
         * estimator (str) -- face estimator model to use
-        * limit (int) -- limit number of faces fed to estimator
     """
 
     def __init__(self, **kwargs):
         """Create new FaceEngine instance"""
 
-        self.limit = kwargs.get('limit', 1000)
         # computation core trio
         self.detector = kwargs.get('detector')
         self.embedder = kwargs.get('embedder')
@@ -218,10 +216,7 @@ class FaceEngine:
         if not isinstance(embeddings, np.ndarray):
             embeddings = np.array(embeddings)
 
-        if len(embeddings) > self.limit:
-            raise TrainError('Enlarge buffer size')
-
-        # also may raise TrainError
+        # may raise TrainError
         self._estimator.fit(embeddings, class_names, **kwargs)
         self.n_samples = len(embeddings)
         self.n_classes = len(set(class_names))

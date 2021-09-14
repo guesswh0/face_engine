@@ -114,14 +114,6 @@ class TestFaceEngine(TestCase):
         self.assertEqual(self.test_engine.n_classes, 1)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_fit_raises_train_error(self):
-        self.test_engine.limit = 1
-        images = [self.bubbles1, self.bubbles2]
-        classes = [0, 0]
-        with self.assertRaises(TrainError):
-            self.test_engine.fit(images, classes)
-
-    @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_fit_with_bounding_boxes(self):
         images = [self.bubbles1, self.bubbles2, self.drive]
         classes = [0, 0, 1]
