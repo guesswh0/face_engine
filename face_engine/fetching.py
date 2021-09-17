@@ -57,7 +57,7 @@ def fetch_images():
 def fetch_models():
     """Fetch default dlib models"""
 
-    extract_dir = os.path.join(RESOURCES, 'data')
+    extract_dir = os.path.join(RESOURCES, 'models/dlib')
     # make sure the dir exists
     if not os.path.isdir(extract_dir):
         os.makedirs(os.path.abspath(extract_dir))

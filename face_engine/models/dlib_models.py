@@ -58,7 +58,7 @@ class MMODDetector(Detector, name='mmod'):
     def __init__(self) -> None:
         try:
             self._cnn_face_detector = dlib.cnn_face_detection_model_v1(
-                os.path.join(RESOURCES, "data/mmod_human_face_detector.dat"))
+                os.path.join(RESOURCES, "models/dlib/mmod_human_face_detector.dat"))
         except RuntimeError:
             logger.error(
                 "Detector model 'mmod' data files not found! "
@@ -108,12 +108,12 @@ class ResNetEmbedder(Embedder, name='resnet', dim=128):
             self._face_encoder = dlib.face_recognition_model_v1(
                 os.path.join(
                     RESOURCES,
-                    "data/dlib_face_recognition_resnet_model_v1.dat"
+                    "models/dlib/dlib_face_recognition_resnet_model_v1.dat"
                 ))
             self._shape_predictor = dlib.shape_predictor(
                 os.path.join(
                     RESOURCES,
-                    "data/shape_predictor_5_face_landmarks.dat"
+                    "models/dlib/shape_predictor_5_face_landmarks.dat"
                 ))
         except RuntimeError:
             logger.error(
