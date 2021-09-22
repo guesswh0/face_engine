@@ -28,15 +28,16 @@ setup(
     url="https://github.com/guesswh0/face_engine",
     packages=find_packages(exclude=['tests', 'extra']),
     install_requires=[
-        'numpy>=1.18.0',
-        'pillow>=7.0.0',
-        'tqdm>=4.44.0'
+        'numpy>=1.18.0,<2.0',
+        'pillow>=8.0.0,<9.0',
+        'tqdm>=4.44.0,<5.0'
     ],
     extras_require={
         'dev': [
-            'scikit-learn',
-            'dlib~=19.0',
-            'opencv-python-headless~=3.4'
+            'dlib',
+            'opencv-python-headless',
+            'sphinx',
+            'sphinx-rtd-theme'
         ]
     },
     entry_points={
