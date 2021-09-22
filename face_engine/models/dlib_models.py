@@ -26,19 +26,21 @@ class HOGDetector(Detector, name='hog'):
             raise FaceNotFoundError
 
         height, width = image.shape[0:2]
-        bounding_boxes = [(
-            max(rect.left(), 0),
-            max(rect.top(), 0),
-            min(rect.right(), width),
-            min(rect.bottom(), height))
-            for rect in detections]
-        return None, bounding_boxes
+        bounding_boxes = np.array([
+            [
+                max(rect.left(), 0),
+                max(rect.top(), 0),
+                min(rect.right(), width),
+                min(rect.bottom(), height)
+            ]
+            for rect in detections])
+        return bounding_boxes, dict()
 
     def detect_one(self, image):
-        _, bounding_boxes = self.detect_all(image)
+        bounding_boxes, extra = self.detect_all(image)
         # dlib bounding boxes are all equal sized
         # returning first face bounding_box
-        return None, bounding_boxes[0]
+        return bounding_boxes[:1], extra
 
 
 class MMODDetector(Detector, name='mmod'):
@@ -72,22 +74,28 @@ class MMODDetector(Detector, name='mmod'):
         if n_det < 1:
             raise FaceNotFoundError
 
-        height, width = image.shape[0:2]
+        height, width = image.shape[:2]
+        det_scores = list()
         bounding_boxes = list()
-        confidence_scores = list()
         for det in detections:
-            bounding_boxes.append((max(det.rect.left(), 0),
-                                   max(det.rect.top(), 0),
-                                   min(det.rect.right(), width),
-                                   min(det.rect.bottom(), height)))
-            confidence_scores.append(det.confidence)
-        return confidence_scores, bounding_boxes
+            bounding_boxes.append(
+                [
+                    max(det.rect.left(), 0),
+                    max(det.rect.top(), 0),
+                    min(det.rect.right(), width),
+                    min(det.rect.bottom(), height)
+                ])
+            det_scores.append(det.confidence)
+        bounding_boxes = np.array(bounding_boxes)
+        extra = dict(det_scores=det_scores)
+        return bounding_boxes, extra
 
     def detect_one(self, image):
-        confidences, bounding_boxes = self.detect_all(image)
+        bounding_boxes, extra = self.detect_all(image)
+        extra['det_scores'] = extra['det_scores'][:1]
         # dlib bounding boxes are all equal sized
-        # returning first face bounding_box
-        return confidences[0], bounding_boxes[0]
+        # returning first one
+        return bounding_boxes[:1], extra
 
 
 class ResNetEmbedder(Embedder, name='resnet', dim=128):
@@ -122,19 +130,7 @@ class ResNetEmbedder(Embedder, name='resnet', dim=128):
             )
             raise
 
-    def compute_embedding(self, image, bounding_box):
-        bb = dlib.rectangle(bounding_box[0], bounding_box[1],
-                            bounding_box[2], bounding_box[3])
-        shape = self._shape_predictor(image, bb)
-
-        # Aligned to shape and cropped by bounding box face image
-        # default shape (150, 150, 3)
-        face_image = dlib.get_face_chip(image, shape)
-
-        embedding = self._face_encoder.compute_face_descriptor(face_image)
-        return np.array(embedding)
-
-    def compute_embeddings(self, image, bounding_boxes):
+    def compute_embeddings(self, image, bounding_boxes, **kwargs):
         shapes = dlib.full_object_detections()
         for bounding_box in bounding_boxes:
             bb = dlib.rectangle(bounding_box[0], bounding_box[1],

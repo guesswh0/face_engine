@@ -1,6 +1,8 @@
 import logging
 import unittest
 
+import numpy as np
+
 from face_engine import FaceEngine
 from face_engine.exceptions import FaceNotFoundError, TrainError
 from face_engine.models import Detector, Embedder, Estimator
@@ -113,15 +115,6 @@ class TestFaceEngine(TestCase):
         self.assertEqual(self.test_engine.n_samples, 2)
         self.assertEqual(self.test_engine.n_classes, 1)
 
-    @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_fit_with_bounding_boxes(self):
-        images = [self.bubbles1, self.bubbles2, self.drive]
-        classes = [0, 0, 1]
-        bbs = [(278, 132, 618, 471), (270, 75, 406, 211), (205, 157, 440, 393)]
-        self.test_engine.fit(images, classes, bbs)
-        self.assertEqual(self.test_engine.n_samples, 3)
-        self.assertEqual(self.test_engine.n_classes, 2)
-
     def test_fit_raises_assertion_error(self):
         images = [self.bubbles1, self.family, self.drive]
         classes = [0, 1]
@@ -130,10 +123,10 @@ class TestFaceEngine(TestCase):
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_predict_return_data_types(self):
-        self.test_engine.fit([self.bubbles1], [0], [(278, 132, 618, 471)])
+        self.test_engine.fit([self.bubbles1], [0])
         image = imread(self.bubbles1)
-        bb = self.test_engine.find_face(image)[1]
-        embeddings = self.test_engine.compute_embedding(image, bb)
+        bbs, extra = self.test_engine.find_face(image)
+        embeddings = self.test_engine.compute_embeddings(image, bbs, **extra)
         data = self.test_engine.predict(embeddings)
         self.assertEqual(len(data), 2)
         self.assertIsInstance(data, tuple)
@@ -143,18 +136,18 @@ class TestFaceEngine(TestCase):
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_predict_before_fit_raises_train_error(self):
         image = imread(self.bubbles1)
-        bb = self.test_engine.find_face(image)[1]
-        embeddings = self.test_engine.compute_embedding(image, bb)
+        bbs, extra = self.test_engine.find_face(image)
+        embeddings = self.test_engine.compute_embeddings(image, bbs, **extra)
         with self.assertRaises(TrainError):
             self.test_engine.predict(embeddings)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_make_prediction_return_data_types(self):
-        self.test_engine.fit([self.bubbles1], [0], [(278, 132, 618, 471)])
+        self.test_engine.fit([self.bubbles1], [0])
         data = self.test_engine.make_prediction(self.bubbles2)
         self.assertEqual(len(data), 2)
         self.assertIsInstance(data, tuple)
-        self.assertIsInstance(data[0], list)
+        self.assertIsInstance(data[0], np.ndarray)
         self.assertIsInstance(data[1], list)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
@@ -172,14 +165,14 @@ class TestFaceEngine(TestCase):
         data = self.test_engine.find_face(self.bubbles1)
         self.assertEqual(len(data), 2)
         self.assertIsInstance(data, tuple)
-        self.assertIsNone(data[0], None)
-        self.assertIsInstance(data[1], tuple)
+        self.assertIsInstance(data[0], np.ndarray)
+        self.assertIsInstance(data[1], dict)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_find_face_return_single_bounding_box(self):
-        bb = self.test_engine.find_face(self.bubbles1)[1]
+        bbs, _ = self.test_engine.find_face(self.bubbles1)
         # returns single bounding box of 4 points
-        self.assertEqual(len(bb), 4)
+        self.assertEqual(len(bbs), 1)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_find_face_with_image_content(self):
@@ -207,14 +200,14 @@ class TestFaceEngine(TestCase):
         data = self.test_engine.find_faces(self.family)
         self.assertEqual(len(data), 2)
         self.assertIsInstance(data, tuple)
-        self.assertIsNone(data[0], None)
-        self.assertIsInstance(data[1], list)
+        self.assertIsInstance(data[0], np.ndarray)
+        self.assertIsInstance(data[1], dict)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_find_faces_returns_multiple_bounding_boxes(self):
-        bbs = self.test_engine.find_faces(self.family)[1]
+        bbs, _ = self.test_engine.find_faces(self.family)
         # family image has three faces
-        self.assertEqual(len(bbs), 3)
+        self.assertGreater(len(bbs), 1)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_find_faces_with_image_content(self):
@@ -228,21 +221,8 @@ class TestFaceEngine(TestCase):
         self.assertIsNotNone(data)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_faces_with_roi(self):
-        image = imread(self.bubbles1)
-        h, w = image.shape[:2]
-        # face is in the first half (by height)
-        with self.subTest(roi='first_half'):
-            bbs = self.test_engine.find_faces(image, roi=(0, 0, w, h // 2))[1]
-            self.assertEqual(len(bbs), 1)
-        # no face in the second half (by height)
-        with self.subTest(roi='second_half'):
-            with self.assertRaises(FaceNotFoundError):
-                self.test_engine.find_faces(image, roi=(0, h // 2, w, h))
-
-    @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_find_faces_with_normalize(self):
-        bbs = self.test_engine.find_faces(self.family, normalize=True)[1]
+        bbs, _ = self.test_engine.find_faces(self.family, normalize=True)
         self.assertTrue(all(all(p <= 1.0 for p in bb) for bb in bbs))
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
@@ -251,56 +231,18 @@ class TestFaceEngine(TestCase):
             self.test_engine.find_faces(self.cat)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_faces_params_by_iou(self):
-        """Test find faces with params scale / roi / scale with roi
-        returning bounding boxes by comparing them to original
-        bounding box by IoU (Intersection over Union) value.
-
-        Reference:
-            https://en.wikipedia.org/wiki/Jaccard_index
-        """
-
-        image = imread(self.bubbles1)
-        origin = self.test_engine.find_faces(image)[1][0]
-        origin_area = (origin[2] - origin[0] + 1) * (origin[3] - origin[1] + 1)
-
-        def get_iou(bb):
-            area = (bb[2] - bb[0] + 1) * (bb[3] - bb[1] + 1)
-            left = max(origin[0], bb[0])
-            upper = max(origin[1], bb[1])
-            right = min(origin[2], bb[2])
-            lower = min(origin[3], bb[3])
-            intersection = max(0, right - left + 1) * max(0, lower - upper + 1)
-            return intersection / float(origin_area + area - intersection)
-
-        # freeze params to hog detector
-        scale = 0.7
-        h, w = image.shape[:2]
-        roi = (0, 0, w - 200, h // 2)
-        # only scale param
-        bb1 = self.test_engine.find_faces(image, scale=scale)[1][0]
-        # only roi param
-        bb2 = self.test_engine.find_faces(image, roi=roi)[1][0]
-        # scale with roi param
-        bb3 = self.test_engine.find_faces(image, roi=roi, scale=scale)[1][0]
-        threshold = 0.8
-        self.assertGreaterEqual(get_iou(bb1), threshold)
-        self.assertGreaterEqual(get_iou(bb2), threshold)
-        self.assertGreaterEqual(get_iou(bb3), threshold)
-
-    @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_compute_embedding_vector_dimension(self):
         bubbles1 = imread(self.bubbles1)
-        bb = self.test_engine.find_face(bubbles1)[1]
-        embedding = self.test_engine.compute_embedding(bubbles1, bb)
+        bbs, _ = self.test_engine.find_face(bubbles1)
+        embedding = self.test_engine.compute_embeddings(bubbles1, bbs)
         self.assertEqual(
             embedding.size, self.test_engine._embedder.embedding_dim)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_compute_embeddings_vectors_dimension(self):
         family = imread(self.family)
-        bbs = self.test_engine.find_faces(family)[1]
-        embeddings = self.test_engine.compute_embeddings(family, bbs)
+        bbs, extra = self.test_engine.find_faces(family)
+        embeddings = self.test_engine.compute_embeddings(family, bbs, **extra)
         self.assertEqual(
             embeddings.shape[1], self.test_engine._embedder.embedding_dim)
 

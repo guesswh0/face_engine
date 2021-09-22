@@ -4,8 +4,6 @@ FaceEngine models API.
 
 __all__ = ['Detector', 'Embedder', 'Estimator', '_models']
 
-import numpy as np
-
 from face_engine.tools import import_package
 
 _models = {}
@@ -45,14 +43,14 @@ class Detector(Model):
     """
 
     def detect_all(self, image):
-        """Detect all face bounding boxes in the image, with corresponding
-        confidence scores.
+        """Detect all faces in the image.
 
         :param image: RGB Image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
-        :returns: confidence scores and bounding boxes.
-        :rtype: tuple(list, list[tuple])
+        :returns: bounding boxes with shape (n_faces, 4),
+            detector model dependent extra information.
+        :rtype: (numpy.ndarray, dict)
 
         :raises: FaceNotFoundError
         """
@@ -65,8 +63,9 @@ class Detector(Model):
         :param image: RGB Image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
-        :returns: confidence score and bounding box.
-        :rtype: tuple(float, tuple)
+        :returns: largest face bounding box with shape (1, 4),
+            detector model dependent extra information.
+        :rtype: (numpy.ndarray, dict)
 
         :raises: FaceNotFoundError
         """
@@ -85,29 +84,16 @@ class Embedder(Model):
         cls.embedding_dim = dim
         super().__init_subclass__(name, **kwargs)
 
-    def compute_embedding(self, image, bounding_box):
-        """Compute image embedding for given bounding box
-
-        :param image: RGB Image with shape (rows, cols, 3)
-        :type image: numpy.ndarray
-
-        :param bounding_box: face bounding box
-        :type bounding_box: tuple
-
-        :returns: embedding vector
-        :rtype: numpy.ndarray
-        """
-
-        raise NotImplementedError()
-
-    def compute_embeddings(self, image, bounding_boxes):
+    def compute_embeddings(self, image, bounding_boxes, **kwargs):
         """Compute image embeddings for given bounding boxes
 
         :param image: RGB image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
-        :param bounding_boxes: face bounding boxes
-        :type bounding_boxes: list[tuple]
+        :param bounding_boxes: bounding boxes with shape (n_faces, 4)
+        :type bounding_boxes: numpy.ndarray
+
+        :keyword kwargs: model dependent
 
         :returns: array of embedding vectors with shape (n_faces, embedding_dim)
         :rtype: numpy.ndarray
@@ -155,7 +141,7 @@ class Estimator(Model):
         :type embeddings: numpy.array
 
         :returns: prediction scores and class names
-        :rtype: tuple(list, list)
+        :rtype: (list, list)
 
         :raises: TrainError
         """

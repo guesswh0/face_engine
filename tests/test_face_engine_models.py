@@ -29,13 +29,13 @@ class TestDetector(TestCase):
         data = self.detector.detect_one(imread(self.bubbles1))
         self.assertIsNotNone(data)
 
-    def test_detect_one_return_bb_is_tuple(self):
-        bb = self.detector.detect_one(imread(self.bubbles1))[1]
-        self.assertIsInstance(bb, tuple)
+    def test_detect_one_return_bb_type(self):
+        bbs, _ = self.detector.detect_one(imread(self.bubbles1))
+        self.assertIsInstance(bbs, np.ndarray)
 
     def test_detect_one_return_one_bb(self):
-        bb = self.detector.detect_one(imread(self.bubbles1))[1]
-        self.assertEqual(len(bb), 4)
+        bbs, _ = self.detector.detect_one(imread(self.bubbles1))
+        self.assertEqual(len(bbs), 1)
 
     def test_detect_one_raises_face_not_found_error(self):
         with self.assertRaises(FaceNotFoundError):
@@ -45,14 +45,13 @@ class TestDetector(TestCase):
         data = self.detector.detect_all(imread(self.bubbles1))
         self.assertIsNotNone(data)
 
-    def test_detect_all_return_bbs_is_tuple(self):
-        bbs = self.detector.detect_all(imread(self.bubbles1))[1]
-        for bb in bbs:
-            self.assertIsInstance(bb, tuple)
+    def test_detect_all_return_bbs_type(self):
+        bbs, _ = self.detector.detect_all(imread(self.bubbles1))
+        self.assertIsInstance(bbs, np.ndarray)
 
     def test_detect_all_return_multiple_bbs(self):
-        bbs = self.detector.detect_all(imread(self.family))[1]
-        self.assertEqual(len(bbs), 3)
+        bbs, _ = self.detector.detect_all(imread(self.family))
+        self.assertGreater(len(bbs), 1)
 
     def test_detect_all_raises_face_not_found_error(self):
         with self.assertRaises(FaceNotFoundError):
@@ -83,16 +82,16 @@ class TestEmbedder(TestCase):
 
     def setUp(self):
         self.image = imread(self.bubbles1)
-        self.bbs = [(278, 132, 618, 471)]
+        self.bbs = np.array([[278, 132, 618, 471]])
         self.embedder = Embedder()
 
     def test_compute_embedding_return_data_is_numpy_array(self):
-        data = self.embedder.compute_embedding(self.image, self.bbs[0])
+        data = self.embedder.compute_embeddings(self.image, self.bbs)
         self.assertIsInstance(data, np.ndarray)
 
     def test_compute_embedding_return_data_shape(self):
-        data = self.embedder.compute_embedding(self.image, self.bbs[0])
-        self.assertEqual(data.shape, (self.embedder.embedding_dim,))
+        data = self.embedder.compute_embeddings(self.image, self.bbs)
+        self.assertEqual(data.shape, (1, self.embedder.embedding_dim))
 
     def test_compute_embeddings_return_data_is_numpy_array(self):
         data = self.embedder.compute_embeddings(self.image, self.bbs)
