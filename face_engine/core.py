@@ -6,10 +6,9 @@ import os
 import pickle
 
 import numpy as np
-from PIL import Image
 
 from . import logger
-from .exceptions import FaceNotFoundError, TrainError
+from .exceptions import FaceNotFoundError
 from .models import _models
 from .tools import imread
 
@@ -330,7 +329,7 @@ class FaceEngine:
         class_names = self.predict(embeddings)[1]
         return class_names, bounding_boxes
 
-    def find_face(self, image, scale=None, normalize=False):
+    def find_face(self, image, normalize=False):
         """Find one face in the image.
 
         .. note::
@@ -342,9 +341,6 @@ class FaceEngine:
 
         :param image: RGB image content or image file uri.
         :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
-
-        :param scale: scale image by a certain factor, value > 0
-        :type scale: float
 
         :param normalize: normalize output bounding box
         :type normalize: bool
@@ -361,17 +357,7 @@ class FaceEngine:
         # original image height and width
         height, width = image.shape[0:2]
 
-        if scale:
-            size = (int(width * scale), int(height * scale))
-            image = np.uint8(Image.fromarray(image).resize(size))
-            confidence, bounding_box = self._detector.detect_one(image)
-            # scale bounding_box to original image size
-            bounding_box = (max(bounding_box[0] // scale, 0),
-                            max(bounding_box[1] // scale, 0),
-                            min(bounding_box[2] // scale, width),
-                            min(bounding_box[3] // scale, height))
-        else:
-            confidence, bounding_box = self._detector.detect_one(image)
+        confidence, bounding_box = self._detector.detect_one(image)
 
         if normalize:
             bounding_box = (bounding_box[0] / width,
@@ -380,7 +366,7 @@ class FaceEngine:
                             bounding_box[3] / height)
         return confidence, bounding_box
 
-    def find_faces(self, image, roi=None, scale=None, normalize=False):
+    def find_faces(self, image, normalize=False):
         """Find multiple faces in the image.
 
         Used to find all faces bounding boxes in the image.
@@ -390,13 +376,6 @@ class FaceEngine:
 
         :param image: RGB image content or image file uri.
         :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
-
-        :param roi: region of interest rectangle,
-            format (left, upper, right, lower)
-        :type roi: tuple | list
-
-        :param scale: scale image by a certain factor, value > 0
-        :type scale: float
 
         :param normalize: normalize output bounding boxes
         :type normalize: bool
@@ -413,33 +392,7 @@ class FaceEngine:
         # original image height and width
         height, width = image.shape[0:2]
 
-        # crop image by region of interest
-        if roi:
-            image = image[roi[1]:roi[3], roi[0]:roi[2], :]
-
-        if scale:
-            h, w = image.shape[0:2]
-            size = (int(w * scale), int(h * scale))
-            image = np.uint8(Image.fromarray(image).resize(size))
-            confidences, bounding_boxes = self._detector.detect_all(image)
-            # scale back bounding_boxes to image size
-            bounding_boxes = [(
-                max(int(bounding_box[0] / scale), 0),
-                max(int(bounding_box[1] / scale), 0),
-                min(int(bounding_box[2] / scale), w),
-                min(int(bounding_box[3] / scale), h))
-                for bounding_box in bounding_boxes]
-        else:
-            confidences, bounding_boxes = self._detector.detect_all(image)
-
-        # adopt bounding box to original image size
-        if roi:
-            from operator import add
-
-            roi = roi[:2] * 2
-            bounding_boxes = [
-                tuple(map(add, bounding_box, roi))
-                for bounding_box in bounding_boxes]
+        confidences, bounding_boxes = self._detector.detect_all(image)
 
         if normalize:
             bounding_boxes = [(
