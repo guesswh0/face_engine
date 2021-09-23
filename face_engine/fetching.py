@@ -41,7 +41,8 @@ def fetch_images():
         'bubbles1.jpg',
         'bubbles2.jpg',
         'cat.jpg',
-        'dog.jpg'
+        'dog.jpg',
+        'book_stack.jpg'
     ]:
         # check if files exists
         file = os.path.join(extract_dir, name)

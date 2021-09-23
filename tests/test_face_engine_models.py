@@ -39,7 +39,7 @@ class TestDetector(TestCase):
 
     def test_detect_one_raises_face_not_found_error(self):
         with self.assertRaises(FaceNotFoundError):
-            self.detector.detect_one(imread(self.cat))
+            self.detector.detect_one(imread(self.book_stack))
 
     def test_detect_all_return_data_is_tuple(self):
         data = self.detector.detect_all(imread(self.bubbles1))
@@ -55,7 +55,7 @@ class TestDetector(TestCase):
 
     def test_detect_all_raises_face_not_found_error(self):
         with self.assertRaises(FaceNotFoundError):
-            self.detector.detect_all(imread(self.cat))
+            self.detector.detect_all(imread(self.book_stack))
 
 
 @unittest.skipUnless(dlib, "dlib package is not installed")

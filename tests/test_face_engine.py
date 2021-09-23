@@ -158,7 +158,7 @@ class TestFaceEngine(TestCase):
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_make_prediction_before_fit_raises_face_not_found_error(self):
         with self.assertRaises(FaceNotFoundError):
-            self.test_engine.make_prediction(self.cat)
+            self.test_engine.make_prediction(self.book_stack)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_find_face_return_data_types(self):
@@ -193,7 +193,7 @@ class TestFaceEngine(TestCase):
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_find_face_raises_face_not_found_error(self):
         with self.assertRaises(FaceNotFoundError):
-            self.test_engine.find_face(self.cat)
+            self.test_engine.find_face(self.book_stack)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_find_faces_return_data_types(self):
@@ -228,7 +228,7 @@ class TestFaceEngine(TestCase):
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_find_faces_raises_face_not_found_error(self):
         with self.assertRaises(FaceNotFoundError):
-            self.test_engine.find_faces(self.cat)
+            self.test_engine.find_faces(self.book_stack)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_compute_embedding_vector_dimension(self):
