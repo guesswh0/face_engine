@@ -254,14 +254,15 @@ class FaceEngine:
         for image, target in zip(images, class_names):
             img = imread(image)
             try:
-                bb, extra = self._detector.detect_one(img)
-                embedding = self._embedder.compute_embeddings(img, bb, **extra)
+                # find largest face in the image
+                bb, extra = self.find_faces(img, limit=1)
+                embedding = self.compute_embeddings(img, bb, **extra)[0]
                 targets.append(target)
-                embeddings.append(embedding[0])
+                embeddings.append(embedding)
             except FaceNotFoundError:
                 # if face not found in the image, skip it
                 continue
-
+        embeddings = np.array(embeddings)
         return self._fit(embeddings, targets, **kwargs)
 
     def predict(self, embeddings):
@@ -315,51 +316,18 @@ class FaceEngine:
         class_names = self.predict(embeddings)[1]
         return bounding_boxes, class_names
 
-    def find_face(self, image, normalize=False):
-        """Find one face in the image.
-
-        .. note::
-           If the image contains multiple faces, detects image
-           largest face bounding box.
-
-        Detector's :meth:`~face_engine.models.Detector.detect_one`
-        wrapping method.
-
-        :param image: RGB image content or image file uri.
-        :type image: Union[str, bytes, file, os.PathLike, numpy.ndarray]
-
-        :param normalize: normalize output bounding box
-        :type normalize: bool
-
-        :returns: largest face bounding box with shape (1, 4),
-            detector model dependent extra information.
-        :rtype: (numpy.ndarray, dict)
-
-        :raises: FaceNotFoundError
-        """
-
-        if not hasattr(image, 'shape'):
-            image = imread(image)
-
-        # original image height and width
-        height, width = image.shape[0:2]
-
-        bounding_boxes, extra = self._detector.detect_one(image)
-
-        if normalize:
-            bounding_boxes = bounding_boxes / ([width, height] * 2)
-        return bounding_boxes, extra
-
-    def find_faces(self, image, normalize=False):
+    def find_faces(self, image, limit=None, normalize=False):
         """Find multiple faces in the image.
-
-        Used to find all faces bounding boxes in the image.
 
         Detector's :meth:`~face_engine.models.Detector.detect_all`
         wrapping method.
 
         :param image: RGB image content or image file uri.
         :type image: Union[str, bytes, file, os.PathLike, numpy.ndarray]
+
+        :param limit: limit the number of detected faces on the image
+            by bounding box size.
+        :type limit: int
 
         :param normalize: normalize output bounding boxes
         :type normalize: bool
@@ -377,11 +345,24 @@ class FaceEngine:
         # original image height and width
         height, width = image.shape[0:2]
 
-        bounding_boxes, extra = self._detector.detect_all(image)
+        bbs, extra = self._detector.detect(image)
+
+        n_det = len(bbs)
+        if isinstance(limit, int) and limit < n_det:
+            if self.detector in ['hog', 'mmod']:
+                indices = range(limit)
+            else:
+                indices = np.argsort(
+                    [(bb[2] - bb[0]) * (bb[3] - bb[1]) for bb in bbs]
+                )[::-1][:limit]
+            # limit extra fields if any exist
+            for key, value in extra.items():
+                extra[key] = extra[key][limit]
+            bbs = bbs[indices]
 
         if normalize:
-            bounding_boxes = bounding_boxes / ([width, height] * 2)
-        return bounding_boxes, extra
+            bbs = bbs / ([width, height] * 2)
+        return bbs, extra
 
     def compute_embeddings(self, image, bounding_boxes, **kwargs):
         """Compute image embeddings for given bounding boxes.

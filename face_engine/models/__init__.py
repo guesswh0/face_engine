@@ -42,28 +42,13 @@ class Detector(Model):
         * bounding box format is (left, upper, right, lower)
     """
 
-    def detect_all(self, image):
+    def detect(self, image):
         """Detect all faces in the image.
 
         :param image: RGB Image with shape (rows, cols, 3)
         :type image: numpy.ndarray
 
         :returns: bounding boxes with shape (n_faces, 4),
-            detector model dependent extra information.
-        :rtype: (numpy.ndarray, dict)
-
-        :raises: FaceNotFoundError
-        """
-
-        raise NotImplementedError()
-
-    def detect_one(self, image):
-        """Detect the image largest face bounding box.
-
-        :param image: RGB Image with shape (rows, cols, 3)
-        :type image: numpy.ndarray
-
-        :returns: largest face bounding box with shape (1, 4),
             detector model dependent extra information.
         :rtype: (numpy.ndarray, dict)
 

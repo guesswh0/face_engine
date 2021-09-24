@@ -125,7 +125,7 @@ class TestFaceEngine(TestCase):
     def test_predict_return_data_types(self):
         self.test_engine.fit([self.bubbles1], [0])
         image = imread(self.bubbles1)
-        bbs, extra = self.test_engine.find_face(image)
+        bbs, extra = self.test_engine.find_faces(image, limit=1)
         embeddings = self.test_engine.compute_embeddings(image, bbs, **extra)
         data = self.test_engine.predict(embeddings)
         self.assertEqual(len(data), 2)
@@ -136,7 +136,7 @@ class TestFaceEngine(TestCase):
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_predict_before_fit_raises_train_error(self):
         image = imread(self.bubbles1)
-        bbs, extra = self.test_engine.find_face(image)
+        bbs, extra = self.test_engine.find_faces(image)
         embeddings = self.test_engine.compute_embeddings(image, bbs, **extra)
         with self.assertRaises(TrainError):
             self.test_engine.predict(embeddings)
@@ -161,53 +161,18 @@ class TestFaceEngine(TestCase):
             self.test_engine.make_prediction(self.book_stack)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_face_return_data_types(self):
-        data = self.test_engine.find_face(self.bubbles1)
+    def test_find_faces_return_data_types(self):
+        data = self.test_engine.find_faces(self.bubbles1)
         self.assertEqual(len(data), 2)
         self.assertIsInstance(data, tuple)
         self.assertIsInstance(data[0], np.ndarray)
         self.assertIsInstance(data[1], dict)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_face_return_single_bounding_box(self):
-        bbs, _ = self.test_engine.find_face(self.bubbles1)
+    def test_find_faces_return_single_bounding_box(self):
+        bbs, _ = self.test_engine.find_faces(self.family, limit=1)
         # returns single bounding box of 4 points
         self.assertEqual(len(bbs), 1)
-
-    @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_face_with_image_content(self):
-        content = imread(self.family)
-        data = self.test_engine.find_face(content)
-        self.assertIsNotNone(data)
-
-    @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_face_with_image_uri(self):
-        data = self.test_engine.find_face(self.bubbles1)
-        self.assertIsNotNone(data)
-
-    @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_face_with_normalize(self):
-        bb = self.test_engine.find_face(self.family, normalize=True)[1]
-        self.assertTrue(all(p <= 1.0 for p in bb))
-
-    @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_face_raises_face_not_found_error(self):
-        with self.assertRaises(FaceNotFoundError):
-            self.test_engine.find_face(self.book_stack)
-
-    @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_faces_return_data_types(self):
-        data = self.test_engine.find_faces(self.family)
-        self.assertEqual(len(data), 2)
-        self.assertIsInstance(data, tuple)
-        self.assertIsInstance(data[0], np.ndarray)
-        self.assertIsInstance(data[1], dict)
-
-    @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_find_faces_returns_multiple_bounding_boxes(self):
-        bbs, _ = self.test_engine.find_faces(self.family)
-        # family image has three faces
-        self.assertGreater(len(bbs), 1)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_find_faces_with_image_content(self):
@@ -217,13 +182,13 @@ class TestFaceEngine(TestCase):
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_find_faces_with_image_uri(self):
-        data = self.test_engine.find_faces(self.family)
+        data = self.test_engine.find_faces(self.bubbles1)
         self.assertIsNotNone(data)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_find_faces_with_normalize(self):
         bbs, _ = self.test_engine.find_faces(self.family, normalize=True)
-        self.assertTrue(all(all(p <= 1.0 for p in bb) for bb in bbs))
+        self.assertTrue(all(p <= 1.0 for p in bbs.flatten()))
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_find_faces_raises_face_not_found_error(self):
@@ -231,20 +196,18 @@ class TestFaceEngine(TestCase):
             self.test_engine.find_faces(self.book_stack)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_compute_embedding_vector_dimension(self):
-        bubbles1 = imread(self.bubbles1)
-        bbs, _ = self.test_engine.find_face(bubbles1)
-        embedding = self.test_engine.compute_embeddings(bubbles1, bbs)
-        self.assertEqual(
-            embedding.size, self.test_engine._embedder.embedding_dim)
+    def test_find_faces_returns_multiple_bounding_boxes(self):
+        bbs, _ = self.test_engine.find_faces(self.family)
+        # family image has three faces
+        self.assertGreater(len(bbs), 1)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
-    def test_compute_embeddings_vectors_dimension(self):
-        family = imread(self.family)
-        bbs, extra = self.test_engine.find_faces(family)
-        embeddings = self.test_engine.compute_embeddings(family, bbs, **extra)
+    def test_compute_embeddings_vector_dimension(self):
+        bubbles1 = imread(self.bubbles1)
+        bbs, _ = self.test_engine.find_faces(bubbles1)
+        embeddings = self.test_engine.compute_embeddings(bubbles1, bbs)
         self.assertEqual(
-            embeddings.shape[1], self.test_engine._embedder.embedding_dim)
+            embeddings.size, self.test_engine._embedder.embedding_dim)
 
 
 if __name__ == '__main__':

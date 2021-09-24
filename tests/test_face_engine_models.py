@@ -25,37 +25,21 @@ class TestDetector(TestCase):
     def setUp(self):
         self.detector = Detector()
 
-    def test_detect_one_return_data_is_tuple(self):
-        data = self.detector.detect_one(imread(self.bubbles1))
+    def test_detect_return_data_is_tuple(self):
+        data = self.detector.detect(imread(self.bubbles1))
         self.assertIsNotNone(data)
 
-    def test_detect_one_return_bb_type(self):
-        bbs, _ = self.detector.detect_one(imread(self.bubbles1))
+    def test_detect_return_bbs_type(self):
+        bbs, _ = self.detector.detect(imread(self.bubbles1))
         self.assertIsInstance(bbs, np.ndarray)
 
-    def test_detect_one_return_one_bb(self):
-        bbs, _ = self.detector.detect_one(imread(self.bubbles1))
-        self.assertEqual(len(bbs), 1)
-
-    def test_detect_one_raises_face_not_found_error(self):
-        with self.assertRaises(FaceNotFoundError):
-            self.detector.detect_one(imread(self.book_stack))
-
-    def test_detect_all_return_data_is_tuple(self):
-        data = self.detector.detect_all(imread(self.bubbles1))
-        self.assertIsNotNone(data)
-
-    def test_detect_all_return_bbs_type(self):
-        bbs, _ = self.detector.detect_all(imread(self.bubbles1))
-        self.assertIsInstance(bbs, np.ndarray)
-
-    def test_detect_all_return_multiple_bbs(self):
-        bbs, _ = self.detector.detect_all(imread(self.family))
+    def test_detect_return_multiple_bbs(self):
+        bbs, _ = self.detector.detect(imread(self.family))
         self.assertGreater(len(bbs), 1)
 
-    def test_detect_all_raises_face_not_found_error(self):
+    def test_detect_raises_face_not_found_error(self):
         with self.assertRaises(FaceNotFoundError):
-            self.detector.detect_all(imread(self.book_stack))
+            self.detector.detect(imread(self.book_stack))
 
 
 @unittest.skipUnless(dlib, "dlib package is not installed")

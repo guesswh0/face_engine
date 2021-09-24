@@ -19,7 +19,7 @@ class HOGDetector(Detector, name='hog'):
     def __init__(self):
         self._face_detector = dlib.get_frontal_face_detector()
 
-    def detect_all(self, image):
+    def detect(self, image):
         detections = self._face_detector(image)
         n_det = len(detections)
         if n_det < 1:
@@ -35,12 +35,6 @@ class HOGDetector(Detector, name='hog'):
             ]
             for rect in detections])
         return bounding_boxes, dict()
-
-    def detect_one(self, image):
-        bounding_boxes, extra = self.detect_all(image)
-        # dlib bounding boxes are all equal sized
-        # returning first face bounding_box
-        return bounding_boxes[:1], extra
 
 
 class MMODDetector(Detector, name='mmod'):
@@ -68,7 +62,7 @@ class MMODDetector(Detector, name='mmod'):
             )
             raise
 
-    def detect_all(self, image):
+    def detect(self, image):
         detections = self._cnn_face_detector(image)
         n_det = len(detections)
         if n_det < 1:
@@ -89,13 +83,6 @@ class MMODDetector(Detector, name='mmod'):
         bounding_boxes = np.array(bounding_boxes)
         extra = dict(det_scores=det_scores)
         return bounding_boxes, extra
-
-    def detect_one(self, image):
-        bounding_boxes, extra = self.detect_all(image)
-        extra['det_scores'] = extra['det_scores'][:1]
-        # dlib bounding boxes are all equal sized
-        # returning first one
-        return bounding_boxes[:1], extra
 
 
 class ResNetEmbedder(Embedder, name='resnet', dim=128):
