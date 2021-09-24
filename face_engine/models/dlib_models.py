@@ -3,9 +3,18 @@ import os
 import dlib
 import numpy as np
 
-from face_engine import logger, RESOURCES
+from face_engine import RESOURCES
 from face_engine.exceptions import FaceNotFoundError
+from face_engine.fetching import fetch_file
 from face_engine.models import Detector, Embedder
+
+# download dependent models
+for url in [
+    "http://dlib.net/files/mmod_human_face_detector.dat.bz2",
+    "http://dlib.net/files/dlib_face_recognition_resnet_model_v1.dat.bz2",
+    "http://dlib.net/files/shape_predictor_5_face_landmarks.dat.bz2"
+]:
+    fetch_file(url, os.path.join(RESOURCES, 'models/dlib'))
 
 
 class HOGDetector(Detector, name='hog'):
@@ -52,15 +61,8 @@ class MMODDetector(Detector, name='mmod'):
     """
 
     def __init__(self) -> None:
-        try:
-            self._cnn_face_detector = dlib.cnn_face_detection_model_v1(
-                os.path.join(RESOURCES, "models/dlib/mmod_human_face_detector.dat"))
-        except RuntimeError:
-            logger.error(
-                "Detector model 'mmod' data files not found! "
-                "Use `fetch_models` and try again."
-            )
-            raise
+        self._cnn_face_detector = dlib.cnn_face_detection_model_v1(
+            os.path.join(RESOURCES, "models/dlib/mmod_human_face_detector.dat"))
 
     def detect(self, image):
         detections = self._cnn_face_detector(image)
@@ -99,23 +101,10 @@ class ResNetEmbedder(Embedder, name='resnet', dim=128):
     """
 
     def __init__(self) -> None:
-        try:
-            self._face_encoder = dlib.face_recognition_model_v1(
-                os.path.join(
-                    RESOURCES,
-                    "models/dlib/dlib_face_recognition_resnet_model_v1.dat"
-                ))
-            self._shape_predictor = dlib.shape_predictor(
-                os.path.join(
-                    RESOURCES,
-                    "models/dlib/shape_predictor_5_face_landmarks.dat"
-                ))
-        except RuntimeError:
-            logger.error(
-                "Embedder model 'resnet' data files not found! "
-                "Use `fetch_models` and try again."
-            )
-            raise
+        self._face_encoder = dlib.face_recognition_model_v1(
+            os.path.join(RESOURCES, "models/dlib/dlib_face_recognition_resnet_model_v1.dat"))
+        self._shape_predictor = dlib.shape_predictor(
+            os.path.join(RESOURCES, "models/dlib/shape_predictor_5_face_landmarks.dat"))
 
     def compute_embeddings(self, image, bounding_boxes, **kwargs):
         shapes = dlib.full_object_detections()

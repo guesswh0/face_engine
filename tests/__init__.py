@@ -2,19 +2,28 @@ import logging
 import os
 import unittest
 
+from face_engine import RESOURCES
+
 try:
     import dlib
 except ImportError:
     dlib = None
 else:
-    from face_engine import fetching
+    from face_engine.fetching import fetch_file
 
-    # fetch if dlib installed
-    fetching.fetch_models()
-    fetching.fetch_images()
-    fetching.fetch_datasets()
+    # fetch datasets
+    base = "https://github.com/guesswh0/storage/raw/master/"
+    extract_dir = os.path.join(RESOURCES, 'datasets')
+    fetch_file(base + "datasets/test.zip", extract_dir)
+    fetch_file(base + "datasets/train.zip", extract_dir)
 
-from face_engine import RESOURCES
+    # fetch images
+    extract_dir = os.path.join(RESOURCES, 'images')
+    fetch_file(base + 'images/bubbles1.jpg', extract_dir)
+    fetch_file(base + 'images/bubbles2.jpg', extract_dir)
+    fetch_file(base + 'images/family.jpg', extract_dir)
+    fetch_file(base + 'images/drive.jpg', extract_dir)
+    fetch_file(base + 'images/book_stack.jpg', extract_dir)
 
 
 class TestCase(unittest.TestCase):
