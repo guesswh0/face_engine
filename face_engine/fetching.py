@@ -1,19 +1,6 @@
-#!/usr/bin/env python3
 """
 Fetching tools.
-Used to download and unpack project default models and testing data.
-
-FaceEngine installation provides these fetching tools as console scripts,
-which could be called explicitly.
-
-    To fetch default models:
-        $ fetch_models
-
-    To fetch testing images:
-        $ fetch_images
-
-    To fetch testing datasets:
-        $ fetch_datasets
+Used to download and unpack project models and testing data.
 """
 
 import os
@@ -25,85 +12,33 @@ RESOURCES = os.path.abspath(
     os.path.join(os.path.dirname(__file__), 'resources'))
 
 
-def fetch_images():
-    """Fetch testing images"""
-
-    extract_dir = os.path.join(RESOURCES, 'images')
-    # make sure the dir exists
-    if not os.path.isdir(extract_dir):
-        os.makedirs(os.path.abspath(extract_dir))
-
-    # Load images from guesswh0/storage repository
-    url_root = 'https://github.com/guesswh0/storage/raw/master/images/'
-    for name in [
-        "drive.jpg",
-        "family.jpg",
-        'bubbles1.jpg',
-        'bubbles2.jpg',
-        'cat.jpg',
-        'dog.jpg'
-    ]:
-        # check if files exists
-        file = os.path.join(extract_dir, name)
-        if os.path.isfile(file):
-            continue
-        with tqdm.tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1,
-                       desc=f"Downloading image: {name}") as t:
-            reporthook = _tqdm_hook(t)
-            filename, _ = urlretrieve(url_root + name, None, reporthook)
-        os.replace(filename, file)
-
-
-def fetch_models():
-    """Fetch default dlib models"""
-
-    extract_dir = os.path.join(RESOURCES, 'data')
-    # make sure the dir exists
-    if not os.path.isdir(extract_dir):
-        os.makedirs(os.path.abspath(extract_dir))
-
-    # Load dlib models
-    url_root = "http://dlib.net/files/"
-    for name in [
-        "mmod_human_face_detector.dat.bz2",
-        "dlib_face_recognition_resnet_model_v1.dat.bz2",
-        "shape_predictor_5_face_landmarks.dat.bz2"
-    ]:
-        # check if file exists
-        file = os.path.join(extract_dir, name)
-        if os.path.isfile(file[:-4]):
-            continue
-        with tqdm.tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1,
-                       desc=f"Downloading model: {name}") as t:
-            reporthook = _tqdm_hook(t)
-            filename, _ = urlretrieve(url_root + name, None, reporthook)
-        os.replace(filename, file)
-        unpack_archive(file, extract_dir)
-        os.remove(file)
-
-
-def fetch_datasets():
-    """Fetch testing datasets"""
-
-    extract_dir = os.path.join(RESOURCES, 'datasets')
-    # make sure the dir exists
-    if not os.path.isdir(extract_dir):
-        os.makedirs(os.path.abspath(extract_dir))
-
-    # Load images from guesswh0/storage repository
-    url_root = 'https://github.com/guesswh0/storage/raw/master/datasets/'
-    for name in ["train.zip", "test.zip"]:
-        # check if file exists
-        file = os.path.join(extract_dir, name)
-        if os.path.exists(file[:-4]):
-            continue
-        with tqdm.tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1,
-                       desc=f"Downloading dataset: {name}") as t:
-            reporthook = _tqdm_hook(t)
-            filename, _ = urlretrieve(url_root + name, None, reporthook)
-        os.replace(filename, file)
-        unpack_archive(file, extract_dir)
-        os.remove(file)
+def fetch_file(url, extract_dir=None):
+    """Fetch file by URL to extract_dir folder"""
+    if not extract_dir:
+        extract_dir = RESOURCES
+    else:
+        # make sure the dir exists
+        if not os.path.isdir(extract_dir):
+            os.makedirs(os.path.abspath(extract_dir))
+    origin = url.split('/')[-1]
+    # check if file exists
+    file = os.path.join(extract_dir, origin)
+    if os.path.exists(file):
+        return
+    # download file
+    with tqdm.tqdm(
+            unit='B',
+            unit_scale=True,
+            unit_divisor=1024,
+            miniters=1,
+            desc=f"Downloading file: {origin}"
+    ) as t:
+        reporthook = _tqdm_hook(t)
+        temp, _ = urlretrieve(url, None, reporthook)
+    os.replace(temp, file)
+    for ext in ['.bz2', '.zip', '.tar', 'gz']:
+        if origin.endswith(ext):
+            unpack_archive(file, extract_dir)
 
 
 # from https://github.com/tqdm/tqdm/blob/master/examples/tqdm_wget.py
@@ -157,9 +92,3 @@ def _unpack_bz2(filename, extract_dir):
         with open(os.path.join(extract_dir, os.path.basename(filename)[:-4]),
                   'wb') as file:
             file.write(data)
-
-
-if __name__ == '__main__':
-    fetch_models()
-    fetch_images()
-    fetch_datasets()

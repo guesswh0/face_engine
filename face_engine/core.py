@@ -6,10 +6,9 @@ import os
 import pickle
 
 import numpy as np
-from PIL import Image
 
 from . import logger
-from .exceptions import FaceNotFoundError, TrainError
+from .exceptions import FaceNotFoundError
 from .models import _models
 from .tools import imread
 
@@ -57,13 +56,11 @@ class FaceEngine:
         * detector (str) -- face detector model to use
         * embedder (str) -- face embedder model to use
         * estimator (str) -- face estimator model to use
-        * limit (int) -- limit number of faces fed to estimator
     """
 
     def __init__(self, **kwargs):
         """Create new FaceEngine instance"""
 
-        self.limit = kwargs.get('limit', 1000)
         # computation core trio
         self.detector = kwargs.get('detector')
         self.embedder = kwargs.get('embedder')
@@ -203,7 +200,7 @@ class FaceEngine:
 
         :param embeddings: face embedding vectors
             with shape (n_samples, embedding_dim)
-        :type embeddings: numpy.ndarray | list
+        :type embeddings: numpy.ndarray
 
         :param class_names: sequence of class names
         :type class_names: list
@@ -218,17 +215,14 @@ class FaceEngine:
         if not isinstance(embeddings, np.ndarray):
             embeddings = np.array(embeddings)
 
-        if len(embeddings) > self.limit:
-            raise TrainError('Enlarge buffer size')
-
-        # also may raise TrainError
+        # may raise TrainError
         self._estimator.fit(embeddings, class_names, **kwargs)
         self.n_samples = len(embeddings)
         self.n_classes = len(set(class_names))
 
         return self
 
-    def fit(self, images, class_names, bounding_boxes=None, **kwargs):
+    def fit(self, images, class_names, **kwargs):
         """Fit (train) estimator model with given images for
         given class names.
 
@@ -237,10 +231,6 @@ class FaceEngine:
         .. note::
             * the number of images and class_names has to be equal
             * the image will be skipped if the face is not found inside
-            * the presence of 'bounding_boxes' accelerates process
-
-        [*] Uses array of file names or uri strings instead of large
-        memory buffers (image arrays).
 
         :param images: image file names or uri strings
         :type images: list[str]
@@ -248,10 +238,7 @@ class FaceEngine:
         :param class_names: sequence of class names
         :type class_names: list
 
-        :param bounding_boxes: sequence of bounding boxes
-        :type bounding_boxes: list[tuple]
-
-        :keyword kwargs: model and data dependent
+        :keyword kwargs: estimator model and data dependent
 
         :return: self
 
@@ -264,24 +251,18 @@ class FaceEngine:
         targets = list()
         embeddings = list()
 
-        if bounding_boxes:
-            for image, bb in zip(images, bounding_boxes):
-                img = imread(image)
-                embedding = self._embedder.compute_embedding(img, bb)
+        for image, target in zip(images, class_names):
+            img = imread(image)
+            try:
+                # find largest face in the image
+                bb, extra = self.find_faces(img, limit=1)
+                embedding = self.compute_embeddings(img, bb, **extra)[0]
+                targets.append(target)
                 embeddings.append(embedding)
-            targets = class_names
-        else:
-            for image, target in zip(images, class_names):
-                img = imread(image)
-                try:
-                    _, bb = self._detector.detect_one(img)
-                    embedding = self._embedder.compute_embedding(img, bb)
-                    targets.append(target)
-                    embeddings.append(embedding)
-                except FaceNotFoundError:
-                    # if face not found in the image, skip it
-                    continue
-
+            except FaceNotFoundError:
+                # if face not found in the image, skip it
+                continue
+        embeddings = np.array(embeddings)
         return self._fit(embeddings, targets, **kwargs)
 
     def predict(self, embeddings):
@@ -295,7 +276,7 @@ class FaceEngine:
         :type embeddings: numpy.ndarray
 
         :returns: prediction scores and class names
-        :rtype: tuple(list, list)
+        :rtype: (list, list)
 
         :raises: TrainError
         """
@@ -318,9 +299,9 @@ class FaceEngine:
         May raise same exceptions of all calling methods.
 
         :param image: RGB image content or image file uri.
-        :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
+        :type image: Union[str, bytes, file, os.PathLike, numpy.ndarray]
 
-        :returns: class names and bounding boxes
+        :returns: bounding boxes and class_names
         :rtype: tuple(list, list)
 
         :raises: FaceNotFoundError
@@ -330,84 +311,30 @@ class FaceEngine:
         if not hasattr(image, 'shape'):
             image = imread(image)
 
-        bounding_boxes = self.find_faces(image, **kwargs)[1]
-        embeddings = self.compute_embeddings(image, bounding_boxes)
+        bounding_boxes, extra = self.find_faces(image, **kwargs)
+        embeddings = self.compute_embeddings(image, bounding_boxes, **extra)
         class_names = self.predict(embeddings)[1]
-        return class_names, bounding_boxes
+        return bounding_boxes, class_names
 
-    def find_face(self, image, scale=None, normalize=False):
-        """Find one face in the image.
-
-        .. note::
-           If the image contains multiple faces, detects image
-           largest face bounding box.
-
-        Detector's :meth:`~face_engine.models.Detector.detect_one`
-        wrapping method.
-
-        :param image: RGB image content or image file uri.
-        :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
-
-        :param scale: scale image by a certain factor, value > 0
-        :type scale: float
-
-        :param normalize: normalize output bounding box
-        :type normalize: bool
-
-        :returns: confidence score and bounding box
-        :rtype: tuple(float, tuple)
-
-        :raises: FaceNotFoundError
-        """
-
-        if not hasattr(image, 'shape'):
-            image = imread(image)
-
-        # original image height and width
-        height, width = image.shape[0:2]
-
-        if scale:
-            size = (int(width * scale), int(height * scale))
-            image = np.uint8(Image.fromarray(image).resize(size))
-            confidence, bounding_box = self._detector.detect_one(image)
-            # scale bounding_box to original image size
-            bounding_box = (max(bounding_box[0] // scale, 0),
-                            max(bounding_box[1] // scale, 0),
-                            min(bounding_box[2] // scale, width),
-                            min(bounding_box[3] // scale, height))
-        else:
-            confidence, bounding_box = self._detector.detect_one(image)
-
-        if normalize:
-            bounding_box = (bounding_box[0] / width,
-                            bounding_box[1] / height,
-                            bounding_box[2] / width,
-                            bounding_box[3] / height)
-        return confidence, bounding_box
-
-    def find_faces(self, image, roi=None, scale=None, normalize=False):
+    def find_faces(self, image, limit=None, normalize=False):
         """Find multiple faces in the image.
-
-        Used to find all faces bounding boxes in the image.
 
         Detector's :meth:`~face_engine.models.Detector.detect_all`
         wrapping method.
 
         :param image: RGB image content or image file uri.
-        :type image: numpy.ndarray | {str, bytes, file, os.PathLike}
+        :type image: Union[str, bytes, file, os.PathLike, numpy.ndarray]
 
-        :param roi: region of interest rectangle,
-            format (left, upper, right, lower)
-        :type roi: tuple | list
-
-        :param scale: scale image by a certain factor, value > 0
-        :type scale: float
+        :param limit: limit the number of detected faces on the image
+            by bounding box size.
+        :type limit: int
 
         :param normalize: normalize output bounding boxes
         :type normalize: bool
 
-        :returns: confidence scores and bounding boxes
-        :rtype: tuple(list, list[tuple])
+        :returns: face bounding box with shape (n_faces, 4),
+            detector model dependent extra information.
+        :rtype: (numpy.ndarray, dict)
 
         :raises: FaceNotFoundError
         """
@@ -418,63 +345,27 @@ class FaceEngine:
         # original image height and width
         height, width = image.shape[0:2]
 
-        # crop image by region of interest
-        if roi:
-            image = image[roi[1]:roi[3], roi[0]:roi[2], :]
+        bbs, extra = self._detector.detect(image)
 
-        if scale:
-            h, w = image.shape[0:2]
-            size = (int(w * scale), int(h * scale))
-            image = np.uint8(Image.fromarray(image).resize(size))
-            confidences, bounding_boxes = self._detector.detect_all(image)
-            # scale back bounding_boxes to image size
-            bounding_boxes = [(
-                max(int(bounding_box[0] / scale), 0),
-                max(int(bounding_box[1] / scale), 0),
-                min(int(bounding_box[2] / scale), w),
-                min(int(bounding_box[3] / scale), h))
-                for bounding_box in bounding_boxes]
-        else:
-            confidences, bounding_boxes = self._detector.detect_all(image)
-
-        # adopt bounding box to original image size
-        if roi:
-            from operator import add
-
-            roi = roi[:2] * 2
-            bounding_boxes = [
-                tuple(map(add, bounding_box, roi))
-                for bounding_box in bounding_boxes]
+        n_det = len(bbs)
+        if isinstance(limit, int) and limit < n_det:
+            if self.detector in ['hog', 'mmod']:
+                indices = range(limit)
+            else:
+                indices = np.argsort(
+                    [(bb[2] - bb[0]) * (bb[3] - bb[1]) for bb in bbs]
+                )[::-1][:limit]
+            # limit extra fields if any exist
+            for key, value in extra.items():
+                extra[key] = extra[key][limit]
+            bbs = bbs[indices]
 
         if normalize:
-            bounding_boxes = [(
-                bounding_box[0] / width,
-                bounding_box[1] / height,
-                bounding_box[2] / width,
-                bounding_box[3] / height)
-                for bounding_box in bounding_boxes]
-        return confidences, bounding_boxes
+            bbs = bbs / ([width, height] * 2)
+        return bbs, extra
 
-    def compute_embedding(self, image, bounding_box):
-        """Compute image embedding for given bounding box.
-
-        Embedder's :meth:`~face_engine.models.Embedder.compute_embedding`
-        wrapping method.
-
-        :param image: RGB image with shape (rows, cols, 3)
-        :type image: numpy.ndarray
-
-        :param bounding_box: face bounding box
-        :type bounding_box: tuple
-
-        :return: embedding vector
-        :rtype: numpy.ndarray
-        """
-
-        return self._embedder.compute_embedding(image, bounding_box)
-
-    def compute_embeddings(self, image, bounding_boxes):
-        """ Compute image embeddings for given bounding boxes.
+    def compute_embeddings(self, image, bounding_boxes, **kwargs):
+        """Compute image embeddings for given bounding boxes.
 
         Embedder's :meth:`~face_engine.models.Embedder.compute_embeddings`
         wrapping method.
@@ -483,49 +374,14 @@ class FaceEngine:
         :type image: numpy.ndarray
 
         :param bounding_boxes: face bounding boxes
-        :type bounding_boxes: list[tuple]
+        :type bounding_boxes: numpy.ndarray
+
+        :keyword kwargs: model dependent
 
         :returns: array of embedding vectors with shape (n_faces, embedding_dim)
         :rtype: numpy.ndarray
         """
 
-        return self._embedder.compute_embeddings(image, bounding_boxes)
-
-    def compare_faces(self, source, target):
-        """Compare a face in the source image with each face in the
-        target image, to find out the most similar one.
-
-        .. note::
-           If the source image contains multiple faces, detects image
-           largest face bounding box.
-
-        Similarity score is estimated with RBF kernel.
-
-        References:
-            1. https://en.wikipedia.org/wiki/Euclidean_distance
-            2. https://en.wikipedia.org/wiki/Radial_basis_function_kernel
-
-        :param source: RGB image content or image file uri.
-        :type source: numpy.ndarray | {str, bytes, file, os.PathLike}
-
-        :param target: RGB image content or image file uri.
-        :type target: numpy.ndarray | {str, bytes, file, os.PathLike}
-
-        :returns: similarity score and bounding box
-        :rtype: tuple(float, tuple)
-        """
-
-        if not hasattr(source, 'shape'):
-            source = imread(source)
-        source_bb = self._detector.detect_one(source)[1]
-        source_vector = self._embedder.compute_embedding(source, source_bb)
-
-        if not hasattr(target, 'shape'):
-            target = imread(target)
-        target_bbs = self._detector.detect_all(target)[1]
-        target_vector = self._embedder.compute_embeddings(target, target_bbs)
-
-        distances = np.linalg.norm(target_vector - source_vector, axis=1)
-        index = np.argmin(distances)
-        score = np.exp(-0.5 * distances[index] ** 2)
-        return score, target_bbs[index]
+        embeddings = self._embedder.compute_embeddings(
+            image, bounding_boxes, **kwargs)
+        return embeddings

@@ -36,11 +36,7 @@ of these models.
 Installation provides optional dlib models.
 
 These implementations are using `dlib python api`_ and dlib provided
-pre-trained model `files`_, which should be fetched manually:
-
-.. code-block:: console
-  
-    $ fetch_models
+pre-trained model `files`_.
 
 .. note::
    FaceEngine installation is not installing dlib by default.

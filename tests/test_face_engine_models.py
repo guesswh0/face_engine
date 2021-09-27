@@ -25,38 +25,21 @@ class TestDetector(TestCase):
     def setUp(self):
         self.detector = Detector()
 
-    def test_detect_one_return_data_is_tuple(self):
-        data = self.detector.detect_one(imread(self.bubbles1))
+    def test_detect_return_data_is_tuple(self):
+        data = self.detector.detect(imread(self.bubbles1))
         self.assertIsNotNone(data)
 
-    def test_detect_one_return_bb_is_tuple(self):
-        bb = self.detector.detect_one(imread(self.bubbles1))[1]
-        self.assertIsInstance(bb, tuple)
+    def test_detect_return_bbs_type(self):
+        bbs, _ = self.detector.detect(imread(self.bubbles1))
+        self.assertIsInstance(bbs, np.ndarray)
 
-    def test_detect_one_return_one_bb(self):
-        bb = self.detector.detect_one(imread(self.bubbles1))[1]
-        self.assertEqual(len(bb), 4)
+    def test_detect_return_multiple_bbs(self):
+        bbs, _ = self.detector.detect(imread(self.family))
+        self.assertGreater(len(bbs), 1)
 
-    def test_detect_one_raises_face_not_found_error(self):
+    def test_detect_raises_face_not_found_error(self):
         with self.assertRaises(FaceNotFoundError):
-            self.detector.detect_one(imread(self.cat))
-
-    def test_detect_all_return_data_is_tuple(self):
-        data = self.detector.detect_all(imread(self.bubbles1))
-        self.assertIsNotNone(data)
-
-    def test_detect_all_return_bbs_is_tuple(self):
-        bbs = self.detector.detect_all(imread(self.bubbles1))[1]
-        for bb in bbs:
-            self.assertIsInstance(bb, tuple)
-
-    def test_detect_all_return_multiple_bbs(self):
-        bbs = self.detector.detect_all(imread(self.family))[1]
-        self.assertEqual(len(bbs), 3)
-
-    def test_detect_all_raises_face_not_found_error(self):
-        with self.assertRaises(FaceNotFoundError):
-            self.detector.detect_all(imread(self.cat))
+            self.detector.detect(imread(self.book_stack))
 
 
 @unittest.skipUnless(dlib, "dlib package is not installed")
@@ -83,16 +66,16 @@ class TestEmbedder(TestCase):
 
     def setUp(self):
         self.image = imread(self.bubbles1)
-        self.bbs = [(278, 132, 618, 471)]
+        self.bbs = np.array([[278, 132, 618, 471]])
         self.embedder = Embedder()
 
     def test_compute_embedding_return_data_is_numpy_array(self):
-        data = self.embedder.compute_embedding(self.image, self.bbs[0])
+        data = self.embedder.compute_embeddings(self.image, self.bbs)
         self.assertIsInstance(data, np.ndarray)
 
     def test_compute_embedding_return_data_shape(self):
-        data = self.embedder.compute_embedding(self.image, self.bbs[0])
-        self.assertEqual(data.shape, (self.embedder.embedding_dim,))
+        data = self.embedder.compute_embeddings(self.image, self.bbs)
+        self.assertEqual(data.shape, (1, self.embedder.embedding_dim))
 
     def test_compute_embeddings_return_data_is_numpy_array(self):
         data = self.embedder.compute_embeddings(self.image, self.bbs)

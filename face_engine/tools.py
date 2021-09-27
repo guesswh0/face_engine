@@ -26,10 +26,10 @@ def imread(uri, mode=None):
 
 
     :param uri: image file, file path or url
-    :type uri:  str | bytes | file | os.PathLike
+    :type uri: Union[str, bytes, file, os.PathLike]
 
     :param mode: format mode to convert the image to.
-        More info on accepted mode types see on [2].
+        More info on accepted mode types see on [1].
     :type mode: str
 
     :returns: image content as unsigned 8-bit numpy array
@@ -56,7 +56,7 @@ def import_module(filepath):
     Note that this function is using file path unlike importlib's import_module.
 
     :param filepath: absolute or relative filepath
-    :type filepath: str | bytes | os.PathLike | Path
+    :type filepath: Union[str, bytes, os.PathLike, Path]
     """
 
     path = Path(filepath)
@@ -66,7 +66,7 @@ def import_module(filepath):
         spec.loader.exec_module(module)
     except ImportError:
         # skip raising on project [optional] default models
-        if path.stem not in ['dlib_models']:
+        if path.stem not in ['dlib_models', 'insightface_models']:
             raise
 
 
@@ -75,7 +75,7 @@ def import_package(package):
     except __init__.py
 
     :param package: absolute or relative filepath to the package
-    :type package: str | bytes | os.PathLike | Path
+    :type package: Union[str, bytes, os.PathLike, Path]
     """
 
     for file in Path(package).parent.glob('*.py'):
