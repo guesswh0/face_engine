@@ -62,7 +62,7 @@ Find all faces in the image with corresponding confidence scores.
 
     from face_engine import FaceEngine
     engine = FaceEngine()
-    confidences, bounding_boxes = engine.find_faces('bubbles1.jpg')
+    bounding_boxes, extra = engine.find_faces('bubbles1.jpg')
 
 
 Find largest face bounding box in the image with corresponding
@@ -72,7 +72,7 @@ confidence score.
 
     from face_engine import FaceEngine
     engine = FaceEngine()
-    confidence, bounding_box = engine.find_face('bubbles1.jpg')
+    bounding_box, extra = engine.find_faces('bubbles1.jpg', limit=1)
 
 
 Face recognition
@@ -88,8 +88,8 @@ Extract facial embedding vectors from the image.
     from face_engine import FaceEngine, tools
     engine = FaceEngine()
     image = tools.imread('bubbles1.jpg)
-    bbs = engine.find_faces(image)[1]
-    embeddings = engine.compute_embeddings(image, bbs)
+    bbs, extra = engine.find_faces(image)
+    embeddings = engine.compute_embeddings(image, bbs, **extra)
 
 
 Predict class name by given face image.
@@ -98,13 +98,13 @@ Predict class name by given face image.
 
 .. code-block:: python
 
-    from face_engine import FaceEngine, tools
+    from face_engine import FaceEngine
+    from face_engine.tools import imread
     engine = FaceEngine()
     engine.fit(['bubbles1.jpg', 'drive.jpg'], [1, 2])
-
-    image = tools.imread('bubbles2.jpg')
-    bbs = engine.find_faces(image)[1]
-    embeddings = engine.compute_embeddings(image, bbs)
+    image = imread('bubbles2.jpg')
+    bbs, extra = engine.find_faces(image)
+    embeddings = engine.compute_embeddings(image, bbs, **extra)
     scores, class_names = engine.predict(embeddings)
 
 Make (lazy) prediction to find out class names and bounding boxes in one call.
@@ -114,20 +114,7 @@ Make (lazy) prediction to find out class names and bounding boxes in one call.
     from face_engine import FaceEngine
     engine = FaceEngine()
     engine.fit(['bubbles1.jpg', 'drive.jpg'], [1, 2])
-    class_names, bounding_boxes = engine.make_prediction('bubbles2.jpg')
-
-
-Face comparison
----------------
-
-Compare a face in the source image with each face in the
-target image, to find out the most similar one.
-
-.. code-block:: python
-
-    from face_engine import FaceEngine, tools
-    engine = FaceEngine()
-    score, bounding_box = engine.compare_faces('bubbles1.jpg', 'bubbles2.jpg')
+    bounding_boxes, class_names = engine.make_prediction('bubbles2.jpg')
 
 
 Persistence
@@ -173,18 +160,20 @@ Live face detection
     cap = cv2.VideoCapture(0)
 
     while True:
-        frame = cap.read()[1]
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        try:
-            bbs = engine.find_faces(rgb_frame)[1]
-            for bb in bbs:
-                cv2.rectangle(frame, bb[:2], bb[2:], (0, 255, 0), 1)
-        except FaceNotFoundError:
-            pass
-        # Display the resulting frame
-        cv2.imshow('frame', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        ret, frame = cap.read()
+        if ret:
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            try:
+                bbs, _ = engine.find_faces(rgb_frame)
+                for bb in bbs:
+                    bb = bb.astype(int)
+                    cv2.rectangle(frame, bb[:2], bb[2:], (0, 255, 0), 1)
+            except FaceNotFoundError:
+                pass
+            # Display the resulting frame
+            cv2.imshow('frame', frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
     cap.release()
     cv2.destroyAllWindows()
@@ -208,21 +197,23 @@ out only class names without prediction scores. To get prediction scores use
     cap = cv2.VideoCapture(0)
 
     while True:
-        frame = cap.read()[1]
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        try:
-            bbs, names = engine.make_prediction(rgb_frame)
-        except FaceNotFoundError:
-            pass # pass drawing
-        else:
-            # draw bounding boxes and predicted names
-            for bb, name in zip(bbs, names):
-                cv2.rectangle(frame, bb[:2], bb[2:], (0, 255, 0), 1)
-                cv2.putText(frame, name, (bb[0], bb[1] - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 1)
-        cv2.imshow('frame', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        ret, frame = cap.read()
+        if ret:
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            try:
+                bbs, names = engine.make_prediction(rgb_frame)
+            except FaceNotFoundError:
+                pass # pass drawing
+            else:
+                # draw bounding boxes and predicted names
+                for bb, name in zip(bbs, names):
+                    bb = bb.astype(int)
+                    cv2.rectangle(frame, bb[:2], bb[2:], (0, 255, 0), 1)
+                    cv2.putText(frame, name, (bb[0], bb[1] - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 1)
+            cv2.imshow('frame', frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
     cap.release()
     cv2.destroyAllWindows()

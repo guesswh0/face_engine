@@ -6,4 +6,3 @@ Reference
    :caption: Contents:
 
    reference/recognition
-   reference/console_scripts

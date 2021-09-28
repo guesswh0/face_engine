@@ -15,11 +15,7 @@ Default models
 Installation provides optional :ref:`dlib models <dlib-models>`.
 
 These implementations are using `dlib python api`_ and dlib provided pre-trained
-model `files`_, which should be fetched manually:
-
-.. code-block:: console
-
-    $ fetch_models
+model `files`_:
 
 .. note::
    FaceEngine installation is not installing dlib by default.
