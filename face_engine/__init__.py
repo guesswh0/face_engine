@@ -13,7 +13,6 @@ import os
 
 logger = logging.getLogger(__name__)
 
-RESOURCES = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), 'resources'))
+RESOURCES = os.path.expanduser('~/.face_engine')
 
 from face_engine.core import FaceEngine, _models, load_engine
