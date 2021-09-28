@@ -10,7 +10,7 @@ work with **face recognition** tasks.
     >>> engine = FaceEngine()
     >>> engine.fit(['bubbles1.jpg', 'drive.jpg'], [1, 2])
     >>> engine.make_prediction('bubbles2.jpg')
-    ([1], [(270, 75, 406, 211)])
+    ([(270, 75, 406, 211)], [1])
 
 
 Installation
