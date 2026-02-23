@@ -4,6 +4,7 @@ Used to download and unpack project models and testing data.
 """
 
 import os
+import logging
 from urllib.request import urlretrieve
 
 import platformdirs
@@ -14,6 +15,12 @@ RESOURCES = platformdirs.user_cache_dir("face_engine")
 
 def fetch_file(url, extract_dir=None):
     """Fetch file by URL to extract_dir folder"""
+    if not url.startswith("https://"):
+        logging.warning(
+            f"Fetching file from insecure URL: {url}. "
+            "Consider using HTTPS to prevent Man-in-the-Middle attacks."
+        )
+
     if not extract_dir:
         extract_dir = RESOURCES
 

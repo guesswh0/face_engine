@@ -52,12 +52,12 @@ class MMODDetector(Detector, name="mmod"):
     References:
         1. http://dlib.net/python/index.html
         2. https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html
-        3. http://dlib.net/files/mmod_human_face_detector.dat.bz2
+        3. https://github.com/davisking/dlib-models/raw/master/mmod_human_face_detector.dat.bz2
     """
 
     def __init__(self) -> None:
         fetch_file(
-            "http://dlib.net/files/mmod_human_face_detector.dat.bz2",
+            "https://github.com/davisking/dlib-models/raw/master/mmod_human_face_detector.dat.bz2",
             os.path.join(RESOURCES, "models/dlib"),
         )
         self._cnn_face_detector = dlib.cnn_face_detection_model_v1(
@@ -97,14 +97,14 @@ class ResNetEmbedder(Embedder, name="resnet", dim=128):
 
     References:
         1. http://dlib.net/python/index.html
-        2. http://dlib.net/files/dlib_face_recognition_resnet_model_v1.dat.bz2
-        3. http://dlib.net/files/shape_predictor_5_face_landmarks.dat.bz2
+        2. https://github.com/davisking/dlib-models/raw/master/dlib_face_recognition_resnet_model_v1.dat.bz2
+        3. https://github.com/davisking/dlib-models/raw/master/shape_predictor_5_face_landmarks.dat.bz2
     """
 
     def __init__(self) -> None:
         for url in [
-            "http://dlib.net/files/dlib_face_recognition_resnet_model_v1.dat.bz2",
-            "http://dlib.net/files/shape_predictor_5_face_landmarks.dat.bz2",
+            "https://github.com/davisking/dlib-models/raw/master/dlib_face_recognition_resnet_model_v1.dat.bz2",
+            "https://github.com/davisking/dlib-models/raw/master/shape_predictor_5_face_landmarks.dat.bz2",
         ]:
             fetch_file(url, os.path.join(RESOURCES, "models/dlib"))
 

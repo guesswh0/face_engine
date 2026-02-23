@@ -68,6 +68,6 @@ or use corresponding setter method with model ``name``:
 
 .. _dlib models: https://github.com/guesswh0/face_engine/blob/master/face_engine/models/dlib_models.py
 .. _dlib python api: http://dlib.net/python/index.html
-.. _files: http://dlib.net/files/
+.. _files: https://github.com/davisking/dlib-models
 .. _build instructions: http://dlib.net/compile.html
 .. _PEP 487: https://www.python.org/dev/peps/pep-0487/
