@@ -36,7 +36,7 @@ def fetch_file(url, extract_dir=None):
         reporthook = _tqdm_hook(t)
         temp, _ = urlretrieve(url, None, reporthook)
     os.replace(temp, file)
-    for ext in [".bz2", ".zip", ".tar", "gz"]:
+    for ext in [".bz2", ".zip", ".tar", ".gz"]:
         if origin.endswith(ext):
             unpack_archive(file, extract_dir)
 
