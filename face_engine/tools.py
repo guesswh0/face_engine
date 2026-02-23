@@ -1,10 +1,19 @@
+import io
 import re
+from functools import lru_cache
 from importlib import util
 from pathlib import Path
 from urllib.request import urlopen, Request
 
 import numpy as np
 from PIL import Image
+
+@lru_cache(maxsize=128)
+def _download_url(url):
+    """Downloads the content of a URL in a thread-safe and cached manner."""
+    with urlopen(url, timeout=10) as response:
+        return response.read()
+
 
 # from django URLValidator
 _url_validation_regex = re.compile(
@@ -43,7 +52,10 @@ def imread(uri, mode=None):
 
     # url validation
     if isinstance(uri, str) and re.match(_url_validation_regex, uri):
-        uri = urlopen(uri)
+        # Using a cache to speed up repeated requests and buffering the download
+        # to memory to avoid multiple small blocking reads by PIL from the socket.
+        data = _download_url(uri)
+        uri = io.BytesIO(data)
 
     image = Image.open(uri)
     if mode:
