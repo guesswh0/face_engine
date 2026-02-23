@@ -4,7 +4,9 @@ Used to download and unpack project models and testing data.
 """
 
 import os
-from urllib.request import urlretrieve
+import shutil
+import warnings
+from typing import Optional
 
 import platformdirs
 import tqdm
@@ -12,33 +14,70 @@ import tqdm
 RESOURCES = platformdirs.user_cache_dir("face_engine")
 
 
-def fetch_file(url, extract_dir=None):
+def fetch_file(url: str, extract_dir: Optional[str] = None) -> None:
     """Fetch file by URL to extract_dir folder"""
     if not extract_dir:
         extract_dir = RESOURCES
 
     # make sure the dir exists
-    if not os.path.isdir(extract_dir):
-        os.makedirs(os.path.abspath(extract_dir), exist_ok=True)
+    os.makedirs(os.path.abspath(extract_dir), exist_ok=True)
+
     origin = url.split("/")[-1]
     # check if file exists
-    file = os.path.join(extract_dir, origin)
-    if os.path.exists(file):
+    file_path = os.path.join(extract_dir, origin)
+    if os.path.exists(file_path):
         return
-    # download file
+
+    # Try using requests first (more robust)
+    try:
+        import requests
+
+        _fetch_with_requests(url, file_path, origin)
+    except ImportError:
+        # Fallback to urllib
+        _fetch_with_urllib(url, file_path, origin)
+
+    # Unpack if needed
+    for ext in [".bz2", ".zip", ".tar", ".gz"]:
+        if origin.endswith(ext):
+            unpack_archive(file_path, extract_dir)
+
+
+def _fetch_with_requests(url: str, file_path: str, desc: str) -> None:
+    import requests
+
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    total_size = int(response.headers.get("content-length", 0))
+
+    with tqdm.tqdm(
+        total=total_size, unit="B", unit_scale=True, unit_divisor=1024, desc=f"Downloading {desc}"
+    ) as progress_bar:
+        with open(file_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+                    progress_bar.update(len(chunk))
+
+
+def _fetch_with_urllib(url: str, file_path: str, desc: str) -> None:
+    from urllib.request import urlretrieve, build_opener, install_opener
+
+    # Add User-Agent to avoid 403 Forbidden on some sites
+    opener = build_opener()
+    opener.addheaders = [("User-agent", "Mozilla/5.0")]
+    install_opener(opener)
+
     with tqdm.tqdm(
         unit="B",
         unit_scale=True,
         unit_divisor=1024,
         miniters=1,
-        desc=f"Downloading file: {origin}",
+        desc=f"Downloading {desc}",
     ) as t:
         reporthook = _tqdm_hook(t)
         temp, _ = urlretrieve(url, None, reporthook)
-    os.replace(temp, file)
-    for ext in [".bz2", ".zip", ".tar", "gz"]:
-        if origin.endswith(ext):
-            unpack_archive(file, extract_dir)
+        shutil.move(temp, file_path)
 
 
 # from https://github.com/tqdm/tqdm/blob/master/examples/tqdm_wget.py
@@ -65,7 +104,7 @@ def _tqdm_hook(t):
     return update_to
 
 
-def unpack_archive(filename, extract_dir=None):
+def unpack_archive(filename: str, extract_dir: Optional[str] = None) -> None:
     """shutil.unpack_archive wrapper to unpack ['.dat.bz2'] archive.
 
     :param filename: name of the archive.
