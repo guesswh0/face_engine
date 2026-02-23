@@ -55,7 +55,7 @@ For more information read the full `documentation`_.
 
 .. _models: https://github.com/guesswh0/face_engine/blob/master/face_engine/models/__init__.py
 .. _dlib python api: http://dlib.net/python/index.html
-.. _files: http://dlib.net/files/
+.. _files: https://github.com/davisking/dlib-models
 .. _build instructions: http://dlib.net/compile.html
 .. _PEP 487: https://www.python.org/dev/peps/pep-0487/
 .. _documentation: https://face-engine.readthedocs.io/en/latest/

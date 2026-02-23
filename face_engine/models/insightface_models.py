@@ -9,7 +9,7 @@ from face_engine.exceptions import FaceNotFoundError
 from face_engine.models import Detector, Embedder
 from face_engine.fetching import fetch_file
 
-BUFFALO_L_URL = "http://storage.insightface.ai/files/models/buffalo_l.zip"
+BUFFALO_L_URL = "https://storage.insightface.ai/files/models/buffalo_l.zip"
 
 
 class RetinaFaceDetector(Detector, name="retina_face"):
