@@ -9,17 +9,14 @@ from face_engine.exceptions import FaceNotFoundError
 from face_engine.models import Detector, Embedder
 from face_engine.fetching import fetch_file
 
-# download dependent models
-fetch_file(
-    "http://storage.insightface.ai/files/models/buffalo_l.zip",
-    os.path.join(RESOURCES, 'models/buffalo_l')
-)
+BUFFALO_L_URL = "http://storage.insightface.ai/files/models/buffalo_l.zip"
 
 
-class RetinaFaceDetector(Detector, name='retina_face'):
+class RetinaFaceDetector(Detector, name="retina_face"):
 
     def __init__(self):
-        model = os.path.join(RESOURCES, 'models/buffalo_l/det_10g.onnx')
+        fetch_file(BUFFALO_L_URL, os.path.join(RESOURCES, "models/buffalo_l"))
+        model = os.path.join(RESOURCES, "models/buffalo_l/det_10g.onnx")
         self._detector = model_zoo.get_model(model)
         self._detector.prepare(ctx_id=0, input_size=(640, 640), det_thresh=0.5)
 
@@ -34,16 +31,18 @@ class RetinaFaceDetector(Detector, name='retina_face'):
         return bbs[:, :4], extra
 
 
-class ArcFaceEmbedder(Embedder, name='arcface', dim=512):
+class ArcFaceEmbedder(Embedder, name="arcface", dim=512):
     def __init__(self):
-        model = os.path.join(RESOURCES, 'models/buffalo_l/w600k_r50.onnx')
+        fetch_file(BUFFALO_L_URL, os.path.join(RESOURCES, "models/buffalo_l"))
+        model = os.path.join(RESOURCES, "models/buffalo_l/w600k_r50.onnx")
         self._embedder = model_zoo.get_model(model)
         self._embedder.prepare(ctx_id=0)
 
     def compute_embeddings(self, image, bounding_boxes, **kwargs):
-        assert 'kpss' in kwargs, (
-            "kpss is not in kwargs, probably using wrong detector model")
-        kpss = kwargs.get('kpss')
+        assert (
+            "kpss" in kwargs
+        ), "kpss is not in kwargs, probably using wrong detector model"
+        kpss = kwargs.get("kpss")
 
         embeddings = []
         for bb, kps in zip(bounding_boxes, kpss):

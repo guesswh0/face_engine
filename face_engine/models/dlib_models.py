@@ -8,16 +8,8 @@ from face_engine.exceptions import FaceNotFoundError
 from face_engine.fetching import fetch_file
 from face_engine.models import Detector, Embedder
 
-# download dependent models
-for url in [
-    "http://dlib.net/files/mmod_human_face_detector.dat.bz2",
-    "http://dlib.net/files/dlib_face_recognition_resnet_model_v1.dat.bz2",
-    "http://dlib.net/files/shape_predictor_5_face_landmarks.dat.bz2"
-]:
-    fetch_file(url, os.path.join(RESOURCES, 'models/dlib'))
 
-
-class HOGDetector(Detector, name='hog'):
+class HOGDetector(Detector, name="hog"):
     """Dlib "Histogram Oriented Gradients" model.
 
     .. note::
@@ -35,18 +27,21 @@ class HOGDetector(Detector, name='hog'):
             raise FaceNotFoundError
 
         height, width = image.shape[0:2]
-        bounding_boxes = np.array([
+        bounding_boxes = np.array(
             [
-                max(rect.left(), 0),
-                max(rect.top(), 0),
-                min(rect.right(), width),
-                min(rect.bottom(), height)
+                [
+                    max(rect.left(), 0),
+                    max(rect.top(), 0),
+                    min(rect.right(), width),
+                    min(rect.bottom(), height),
+                ]
+                for rect in detections
             ]
-            for rect in detections])
+        )
         return bounding_boxes, dict()
 
 
-class MMODDetector(Detector, name='mmod'):
+class MMODDetector(Detector, name="mmod"):
     """Dlib pre-trained CNN model with "Max-Margin Object Detection"
     loss function.
 
@@ -61,8 +56,13 @@ class MMODDetector(Detector, name='mmod'):
     """
 
     def __init__(self) -> None:
+        fetch_file(
+            "http://dlib.net/files/mmod_human_face_detector.dat.bz2",
+            os.path.join(RESOURCES, "models/dlib"),
+        )
         self._cnn_face_detector = dlib.cnn_face_detection_model_v1(
-            os.path.join(RESOURCES, "models/dlib/mmod_human_face_detector.dat"))
+            os.path.join(RESOURCES, "models/dlib/mmod_human_face_detector.dat")
+        )
 
     def detect(self, image):
         detections = self._cnn_face_detector(image)
@@ -79,16 +79,17 @@ class MMODDetector(Detector, name='mmod'):
                     max(det.rect.left(), 0),
                     max(det.rect.top(), 0),
                     min(det.rect.right(), width),
-                    min(det.rect.bottom(), height)
-                ])
+                    min(det.rect.bottom(), height),
+                ]
+            )
             det_scores.append(det.confidence)
         bounding_boxes = np.array(bounding_boxes)
         extra = dict(det_scores=det_scores)
         return bounding_boxes, extra
 
 
-class ResNetEmbedder(Embedder, name='resnet', dim=128):
-    """ Dlib pre-trained face recognition ResNet model.
+class ResNetEmbedder(Embedder, name="resnet", dim=128):
+    """Dlib pre-trained face recognition ResNet model.
 
     .. note::
         * face alignment pre-processing used with 5 point shape_predictor.
@@ -101,16 +102,27 @@ class ResNetEmbedder(Embedder, name='resnet', dim=128):
     """
 
     def __init__(self) -> None:
+        for url in [
+            "http://dlib.net/files/dlib_face_recognition_resnet_model_v1.dat.bz2",
+            "http://dlib.net/files/shape_predictor_5_face_landmarks.dat.bz2",
+        ]:
+            fetch_file(url, os.path.join(RESOURCES, "models/dlib"))
+
         self._face_encoder = dlib.face_recognition_model_v1(
-            os.path.join(RESOURCES, "models/dlib/dlib_face_recognition_resnet_model_v1.dat"))
+            os.path.join(
+                RESOURCES, "models/dlib/dlib_face_recognition_resnet_model_v1.dat"
+            )
+        )
         self._shape_predictor = dlib.shape_predictor(
-            os.path.join(RESOURCES, "models/dlib/shape_predictor_5_face_landmarks.dat"))
+            os.path.join(RESOURCES, "models/dlib/shape_predictor_5_face_landmarks.dat")
+        )
 
     def compute_embeddings(self, image, bounding_boxes, **kwargs):
         shapes = dlib.full_object_detections()
         for bounding_box in bounding_boxes:
-            bb = dlib.rectangle(bounding_box[0], bounding_box[1],
-                                bounding_box[2], bounding_box[3])
+            bb = dlib.rectangle(
+                bounding_box[0], bounding_box[1], bounding_box[2], bounding_box[3]
+            )
             shapes.append(self._shape_predictor(image, bb))
 
         # Aligned to shape and cropped by bounding boxes face images

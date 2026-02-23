@@ -10,8 +10,7 @@ from face_engine.tools import imread
 from tests import TestCase, dlib
 
 if dlib:
-    from face_engine.models.dlib_models import (
-        HOGDetector, MMODDetector, ResNetEmbedder)
+    from face_engine.models.dlib_models import HOGDetector, MMODDetector, ResNetEmbedder
 
 
 class TestDetector(TestCase):
@@ -134,5 +133,5 @@ del TestDetector
 del TestEmbedder
 del TestEstimator
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
