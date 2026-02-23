@@ -7,7 +7,7 @@ from face_engine.exceptions import TrainError
 from face_engine.models import Estimator
 
 
-class BasicEstimator(Estimator, name='basic'):
+class BasicEstimator(Estimator, name="basic"):
     """Basic estimator model makes predictions by linear comparing each source
     embedding vector with each fitted embedding vectors.
 
@@ -25,7 +25,7 @@ class BasicEstimator(Estimator, name='basic'):
 
     def predict(self, embeddings):
         if self.class_names is None:
-            raise TrainError('Model is not fitted yet!')
+            raise TrainError("Model is not fitted yet!")
 
         scores = []
         class_names = []
@@ -38,11 +38,11 @@ class BasicEstimator(Estimator, name='basic'):
         return scores, class_names
 
     def save(self, dirname):
-        name = '%s.estimator.%s' % (self.name, 'p')
-        with open(os.path.join(dirname, name), 'wb') as file:
+        name = "%s.estimator.%s" % (self.name, "p")
+        with open(os.path.join(dirname, name), "wb") as file:
             pickle.dump(self.__dict__, file)
 
     def load(self, dirname):
-        name = '%s.estimator.%s' % (self.name, 'p')
-        with open(os.path.join(dirname, name), 'rb') as file:
+        name = "%s.estimator.%s" % (self.name, "p")
+        with open(os.path.join(dirname, name), "rb") as file:
             self.__dict__.update(pickle.load(file))

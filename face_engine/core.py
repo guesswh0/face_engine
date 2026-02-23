@@ -2,6 +2,7 @@
 FaceEngine core module.
 """
 
+from typing import Any, Dict, List, Optional, Tuple, Union
 import os
 import pickle
 
@@ -13,7 +14,7 @@ from .models import _models
 from .tools import imread
 
 
-def load_engine(filename):
+def load_engine(filename: str) -> "FaceEngine":
     """Loads and restores engine object from the file.
 
     This function is convenient wrapper of pickle.load() function, and is used
@@ -31,13 +32,14 @@ def load_engine(filename):
     :rtype: :class:`.FaceEngine`
     """
 
-    with open(filename, 'rb') as file:
+    with open(filename, "rb") as file:
         engine = pickle.load(file)
 
     # foolproof
     if not isinstance(engine, FaceEngine):
-        raise TypeError("file %s could not be deserialized as "
-                        "FaceEngine instance" % filename)
+        raise TypeError(
+            "file %s could not be deserialized as " "FaceEngine instance" % filename
+        )
 
     # load estimator model's state only if there is something to restore
     if engine.n_samples > 0:
@@ -58,47 +60,47 @@ class FaceEngine:
         * estimator (str) -- face estimator model to use
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Create new FaceEngine instance"""
 
         # computation core trio
-        self.detector = kwargs.get('detector')
-        self.embedder = kwargs.get('embedder')
-        self.estimator = kwargs.get('estimator')
+        self.detector = kwargs.get("detector")
+        self.embedder = kwargs.get("embedder")
+        self.estimator = kwargs.get("estimator")
         # keep last fitted number of classes and samples
         self.n_classes = 0
         self.n_samples = 0
 
-    def __getstate__(self):
+    def __getstate__(self) -> Dict[str, Any]:
         # copy the engine object's state from self.__dict__
         # using copy to avoid modifying the original state
         state = self.__dict__.copy()
 
         # remove the model objects (unpicklable entries)
-        del state['_detector']
-        del state['_embedder']
-        del state['_estimator']
+        del state["_detector"]
+        del state["_embedder"]
+        del state["_estimator"]
 
         # persist the model objects names
-        state['detector'] = self.detector
-        state['embedder'] = self.embedder
-        state['estimator'] = self.estimator
+        state["detector"] = self.detector
+        state["embedder"] = self.embedder
+        state["estimator"] = self.estimator
 
         # returns engine instance's lightweight state dictionary
         # contents of the which will be used by pickle in .save() method
         return state
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Dict[str, Any]) -> None:
         # initialize engine models by their setter methods
-        self.detector = state.pop('detector')
-        self.embedder = state.pop('embedder')
-        self.estimator = state.pop('estimator')
+        self.detector = state.pop("detector")
+        self.embedder = state.pop("embedder")
+        self.estimator = state.pop("estimator")
 
         # update rest attributes
         self.__dict__.update(state)
 
     @property
-    def detector(self):
+    def detector(self) -> str:
         """
         :return: detector model name
         :rtype: str
@@ -107,7 +109,7 @@ class FaceEngine:
         return self._detector.name
 
     @detector.setter
-    def detector(self, name):
+    def detector(self, name: Optional[str]) -> None:
         """Face detector model to use:
             - 'hog': dlib "Histogram Oriented Gradients" model (default).
             - 'mmod': dlib "Max-Margin Object Detection" model.
@@ -117,16 +119,16 @@ class FaceEngine:
         """
 
         if not name:
-            name = 'hog'
+            name = "hog"
         if name not in _models:
-            if name != 'hog':
+            if name != "hog":
                 logger.warning("Detector model '%s' not found!", name)
-            name = 'abstract_detector'
+            name = "abstract_detector"
         Detector = _models.get(name)
         self._detector = Detector()
 
     @property
-    def embedder(self):
+    def embedder(self) -> str:
         """
         :return: embedder model name
         :rtype: str
@@ -135,7 +137,7 @@ class FaceEngine:
         return self._embedder.name
 
     @embedder.setter
-    def embedder(self, name):
+    def embedder(self, name: Optional[str]) -> None:
         """Face embedder model to use:
             - 'resnet': dlib ResNet model (default)
 
@@ -144,16 +146,16 @@ class FaceEngine:
         """
 
         if not name:
-            name = 'resnet'
+            name = "resnet"
         if name not in _models:
-            if name != 'resnet':
+            if name != "resnet":
                 logger.warning("Embedder model '%s' not found!", name)
-            name = 'abstract_embedder'
+            name = "abstract_embedder"
         Embedder = _models.get(name)
         self._embedder = Embedder()
 
     @property
-    def estimator(self):
+    def estimator(self) -> str:
         """
         :return: estimator model name
         :rtype: str
@@ -162,7 +164,7 @@ class FaceEngine:
         return self._estimator.name
 
     @estimator.setter
-    def estimator(self, name):
+    def estimator(self, name: Optional[str]) -> None:
         """Estimator model to use:
             - 'basic': linear comparing estimator (default)
 
@@ -171,15 +173,15 @@ class FaceEngine:
         """
 
         if not name:
-            name = 'basic'
+            name = "basic"
         if name not in _models:
-            if name != 'basic':
+            if name != "basic":
                 logger.warning("Estimator model '%s' not found!", name)
-            name = 'abstract_estimator'
+            name = "abstract_estimator"
         Estimator = _models.get(name)
         self._estimator = Estimator()
 
-    def save(self, filename):
+    def save(self, filename: str) -> None:
         """Save engine object state to the file.
 
         Persisting the object state as lightweight engine instance which
@@ -191,10 +193,12 @@ class FaceEngine:
         if self.n_samples > 0:
             self._estimator.save(os.path.dirname(filename))
 
-        with open(filename, 'wb') as file:
+        with open(filename, "wb") as file:
             pickle.dump(self, file)
 
-    def _fit(self, embeddings, class_names, **kwargs):
+    def _fit(
+        self, embeddings: np.ndarray, class_names: List[Any], **kwargs: Any
+    ) -> "FaceEngine":
         """Fit (train) estimator model with given embeddings for
         given class names.
 
@@ -222,7 +226,9 @@ class FaceEngine:
 
         return self
 
-    def fit(self, images, class_names, **kwargs):
+    def fit(
+        self, images: List[str], class_names: List[Any], **kwargs: Any
+    ) -> "FaceEngine":
         """Fit (train) estimator model with given images for
         given class names.
 
@@ -245,8 +251,9 @@ class FaceEngine:
         :raises: TrainError
         """
 
-        assert len(images) == len(class_names), (
-            "the number of images and class_names has to be equal")
+        assert len(images) == len(
+            class_names
+        ), "the number of images and class_names has to be equal"
 
         targets = list()
         embeddings = list()
@@ -265,7 +272,7 @@ class FaceEngine:
         embeddings = np.array(embeddings)
         return self._fit(embeddings, targets, **kwargs)
 
-    def predict(self, embeddings):
+    def predict(self, embeddings: np.ndarray) -> Tuple[List[float], List[Any]]:
         """Make predictions for given embeddings.
 
         Estimator's :meth:`~face_engine.models.Estimator.predict`
@@ -283,7 +290,9 @@ class FaceEngine:
 
         return self._estimator.predict(embeddings)
 
-    def make_prediction(self, image, **kwargs):
+    def make_prediction(
+        self, image: Union[str, bytes, os.PathLike, np.ndarray], **kwargs: Any
+    ) -> Tuple[np.ndarray, List[Any]]:
         """Lazy prediction method to make prediction by given image.
 
         Convenient wrapper method to go over all steps of face recognition
@@ -308,7 +317,7 @@ class FaceEngine:
         :raises: TrainError
         """
 
-        if not hasattr(image, 'shape'):
+        if not hasattr(image, "shape"):
             image = imread(image)
 
         bounding_boxes, extra = self.find_faces(image, **kwargs)
@@ -316,7 +325,12 @@ class FaceEngine:
         class_names = self.predict(embeddings)[1]
         return bounding_boxes, class_names
 
-    def find_faces(self, image, limit=None, normalize=False):
+    def find_faces(
+        self,
+        image: Union[str, bytes, os.PathLike, np.ndarray],
+        limit: Optional[int] = None,
+        normalize: bool = False,
+    ) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Find multiple faces in the image.
 
         Detector's :meth:`~face_engine.models.Detector.detect_all`
@@ -339,7 +353,7 @@ class FaceEngine:
         :raises: FaceNotFoundError
         """
 
-        if not hasattr(image, 'shape'):
+        if not hasattr(image, "shape"):
             image = imread(image)
 
         # original image height and width
@@ -349,12 +363,12 @@ class FaceEngine:
 
         n_det = len(bbs)
         if isinstance(limit, int) and limit < n_det:
-            if self.detector in ['hog', 'mmod']:
+            if self.detector in ["hog", "mmod"]:
                 indices = range(limit)
             else:
-                indices = np.argsort(
-                    [(bb[2] - bb[0]) * (bb[3] - bb[1]) for bb in bbs]
-                )[::-1][:limit]
+                indices = np.argsort([(bb[2] - bb[0]) * (bb[3] - bb[1]) for bb in bbs])[
+                    ::-1
+                ][:limit]
             # limit extra fields if any exist
             for key, value in extra.items():
                 extra[key] = extra[key][limit]
@@ -364,7 +378,9 @@ class FaceEngine:
             bbs = bbs / ([width, height] * 2)
         return bbs, extra
 
-    def compute_embeddings(self, image, bounding_boxes, **kwargs):
+    def compute_embeddings(
+        self, image: np.ndarray, bounding_boxes: np.ndarray, **kwargs: Any
+    ) -> np.ndarray:
         """Compute image embeddings for given bounding boxes.
 
         Embedder's :meth:`~face_engine.models.Embedder.compute_embeddings`
@@ -382,6 +398,5 @@ class FaceEngine:
         :rtype: numpy.ndarray
         """
 
-        embeddings = self._embedder.compute_embeddings(
-            image, bounding_boxes, **kwargs)
+        embeddings = self._embedder.compute_embeddings(image, bounding_boxes, **kwargs)
         return embeddings

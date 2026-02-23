@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "face-engine"
+dynamic = ["version"]
+description = "Face Recognition Engine"
+readme = "README.rst"
+requires-python = ">=3.8"
+license = {text = "Apache License, Version 2.0"}
+authors = [
+  {name = "Daniyar Kussainov", email = "ohw0sseug@gmail.com"}
+]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = [
+    "numpy>=1.18.0,<3.0",
+    "pillow>=8.0.0",
+    "tqdm>=4.44.0,<5.0",
+    "platformdirs>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "black",
+    "dlib",
+    "opencv-python-headless",
+    "sphinx",
+    "sphinx-rtd-theme"
+]
+insightface = [
+    "insightface",
+    "onnxruntime"
+]
+dlib = [
+    "dlib"
+]
+
+[project.urls]
+Homepage = "https://github.com/guesswh0/face_engine"
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "extra"]
+
+[tool.setuptools.dynamic]
+version = {attr = "face_engine.__version__"}

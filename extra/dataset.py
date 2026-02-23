@@ -23,13 +23,13 @@ def load_dataset(dir):
             images += paths
             names += [name] * len(paths)
         else:
-            if name.endswith('.csv'):
-                with open(file, newline='') as csv_file:
+            if name.endswith(".csv"):
+                with open(file, newline="") as csv_file:
                     reader = csv.reader(csv_file)
                     # next(reader, None)
                     bounding_boxes += [tuple(map(int, row)) for row in reader]
-            if name.endswith('.dat'):
-                with open(file, 'rb') as dat_file:
+            if name.endswith(".dat"):
+                with open(file, "rb") as dat_file:
                     embeddings += pickle.load(dat_file)
     return images, names, bounding_boxes, embeddings
 
@@ -39,12 +39,12 @@ def create_dataset(dirname, image_paths, bounding_boxes, embeddings):
     for image_path in image_paths:
         shutil.copy(image_path, dirname)
     # create csv file with bounding boxes
-    with open(dirname + '.csv', 'w', newline='') as file:
+    with open(dirname + ".csv", "w", newline="") as file:
         writer = csv.writer(file)
         # writer.writerow(('left', 'upper', 'right', 'lower'))
         writer.writerows(bounding_boxes)
     # create .dat file with pre-calculated embeddings
-    with open(dirname + '.dat', 'wb') as dat:
+    with open(dirname + ".dat", "wb") as dat:
         pickle.dump(embeddings, dat)
 
 
@@ -52,8 +52,8 @@ def prepare_dataset(source, target, classes=10, images=10, split=0.7, shuffle=Fa
     assert split <= 1.0, "split must be less than or equal to 1.0"
     engine = FaceEngine()
     target = os.path.expanduser(target)
-    train_dir = os.path.join(target, 'train')
-    test_dir = os.path.join(target, 'test')
+    train_dir = os.path.join(target, "train")
+    test_dir = os.path.join(target, "test")
     # create dirs if not exist
     if not os.path.exists(target):
         os.makedirs(target)
@@ -79,23 +79,33 @@ def prepare_dataset(source, target, classes=10, images=10, split=0.7, shuffle=Fa
         embeddings = face_images.embeddings[:images]
         # split and create datasets
         split = int(images * split)
-        create_dataset(train_name, image_paths[:split], bounding_boxes[:split], embeddings[:split])
-        create_dataset(test_name, image_paths[split:], bounding_boxes[split:], embeddings[split:])
+        create_dataset(
+            train_name, image_paths[:split], bounding_boxes[:split], embeddings[:split]
+        )
+        create_dataset(
+            test_name, image_paths[split:], bounding_boxes[split:], embeddings[split:]
+        )
         classes_total += 1
         print(face_images)
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('source', type=str, help='Source directory')
-    parser.add_argument('target', type=str, help='Target directory')
-    parser.add_argument('-c', '--classes', type=int, help='Number of classes', default=10)
-    parser.add_argument('-i', '--images', type=int, help='Images per class', default=10)
-    parser.add_argument('--split', type=float, help='split_ratio', default=0.7)
-    parser.add_argument('--shuffle', type=bool, help='use random shuffle', default=False)
+    parser.add_argument("source", type=str, help="Source directory")
+    parser.add_argument("target", type=str, help="Target directory")
+    parser.add_argument(
+        "-c", "--classes", type=int, help="Number of classes", default=10
+    )
+    parser.add_argument("-i", "--images", type=int, help="Images per class", default=10)
+    parser.add_argument("--split", type=float, help="split_ratio", default=0.7)
+    parser.add_argument(
+        "--shuffle", type=bool, help="use random shuffle", default=False
+    )
     return parser.parse_args()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = parse_arguments()
-    prepare_dataset(args.source, args.target, args.classes, args.images, args.split, args.shuffle)
+    prepare_dataset(
+        args.source, args.target, args.classes, args.images, args.split, args.shuffle
+    )

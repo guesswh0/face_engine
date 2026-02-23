@@ -8,13 +8,14 @@ from PIL import Image
 
 # from django URLValidator
 _url_validation_regex = re.compile(
-    r'^(?:http|ftp)s?://'  # scheme
-    r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain
-    r'localhost|'  # localhost
-    r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ip
-    r'(?::\d+)?'  # optional port
-    r'(?:/?|[/?]\S+)$',
-    re.IGNORECASE)
+    r"^(?:http|ftp)s?://"  # scheme
+    r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|"  # domain
+    r"localhost|"  # localhost
+    r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # ip
+    r"(?::\d+)?"  # optional port
+    r"(?:/?|[/?]\S+)$",
+    re.IGNORECASE,
+)
 
 
 def imread(uri, mode=None):
@@ -66,7 +67,7 @@ def import_module(filepath):
         spec.loader.exec_module(module)
     except ImportError:
         # skip raising on project [optional] default models
-        if path.stem not in ['dlib_models', 'insightface_models']:
+        if path.stem not in ["dlib_models", "insightface_models"]:
             raise
 
 
@@ -78,7 +79,7 @@ def import_package(package):
     :type package: Union[str, bytes, os.PathLike, Path]
     """
 
-    for file in Path(package).parent.glob('*.py'):
+    for file in Path(package).parent.glob("*.py"):
         # skip all underscore files (__init__.py, compiled files, etc)
-        if not file.stem.startswith('_'):
+        if not file.stem.startswith("_"):
             import_module(file)

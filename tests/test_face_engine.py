@@ -15,91 +15,89 @@ class TestFaceEngine(TestCase):
     def setUp(self):
         self.test_engine = FaceEngine()
         self.empty_engine = FaceEngine(
-            detector='abstract_detector',
-            embedder='abstract_embedder',
-            estimator='abstract_estimator'
+            detector="abstract_detector",
+            embedder="abstract_embedder",
+            estimator="abstract_estimator",
         )
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_init_default_models(self):
-        self.assertEqual(self.test_engine.detector, 'hog')
-        self.assertEqual(self.test_engine.embedder, 'resnet')
-        self.assertEqual(self.test_engine.estimator, 'basic')
+        self.assertEqual(self.test_engine.detector, "hog")
+        self.assertEqual(self.test_engine.embedder, "resnet")
+        self.assertEqual(self.test_engine.estimator, "basic")
 
     @unittest.skipIf(dlib, "dlib package is installed")
     def test_init_default_models_without_dlib(self):
-        self.assertEqual(self.test_engine.detector, 'abstract_detector')
-        self.assertEqual(self.test_engine.embedder, 'abstract_embedder')
-        self.assertEqual(self.test_engine.estimator, 'basic')
+        self.assertEqual(self.test_engine.detector, "abstract_detector")
+        self.assertEqual(self.test_engine.embedder, "abstract_embedder")
+        self.assertEqual(self.test_engine.estimator, "basic")
 
     def test_init_abstract_models(self):
-        self.assertEqual(self.empty_engine.detector, 'abstract_detector')
-        self.assertEqual(self.empty_engine.embedder, 'abstract_embedder')
-        self.assertEqual(self.empty_engine.estimator, 'abstract_estimator')
+        self.assertEqual(self.empty_engine.detector, "abstract_detector")
+        self.assertEqual(self.empty_engine.embedder, "abstract_embedder")
+        self.assertEqual(self.empty_engine.estimator, "abstract_estimator")
 
     def test_explicit_init_with_not_existing_models(self):
         logging.disable(logging.WARNING)
         engine = FaceEngine(
-            detector='my_detector',
-            embedder='my_embedder',
-            estimator='my_estimator'
+            detector="my_detector", embedder="my_embedder", estimator="my_estimator"
         )
-        self.assertEqual(engine.detector, 'abstract_detector')
-        self.assertEqual(engine.embedder, 'abstract_embedder')
-        self.assertEqual(engine.estimator, 'abstract_estimator')
+        self.assertEqual(engine.detector, "abstract_detector")
+        self.assertEqual(engine.embedder, "abstract_embedder")
+        self.assertEqual(engine.estimator, "abstract_estimator")
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_setters_with_defaults(self):
-        self.empty_engine.detector = 'hog'
-        self.empty_engine.embedder = 'resnet'
-        self.empty_engine.estimator = 'basic'
-        self.assertEqual(self.empty_engine.detector, 'hog')
+        self.empty_engine.detector = "hog"
+        self.empty_engine.embedder = "resnet"
+        self.empty_engine.estimator = "basic"
+        self.assertEqual(self.empty_engine.detector, "hog")
         self.assertIsInstance(self.empty_engine._detector, Detector)
-        self.assertEqual(self.empty_engine.embedder, 'resnet')
+        self.assertEqual(self.empty_engine.embedder, "resnet")
         self.assertIsInstance(self.empty_engine._embedder, Embedder)
-        self.assertEqual(self.empty_engine.estimator, 'basic')
+        self.assertEqual(self.empty_engine.estimator, "basic")
         self.assertIsInstance(self.empty_engine._estimator, Estimator)
 
     def test_setters_with_abstract_models(self):
-        self.test_engine.detector = 'abstract_detector'
-        self.test_engine.embedder = 'abstract_embedder'
-        self.test_engine.estimator = 'abstract_estimator'
+        self.test_engine.detector = "abstract_detector"
+        self.test_engine.embedder = "abstract_embedder"
+        self.test_engine.estimator = "abstract_estimator"
         self.assertIsInstance(self.test_engine._detector, Detector)
-        self.assertEqual(self.test_engine.detector, 'abstract_detector')
+        self.assertEqual(self.test_engine.detector, "abstract_detector")
         self.assertIsInstance(self.test_engine._embedder, Embedder)
-        self.assertEqual(self.test_engine.embedder, 'abstract_embedder')
+        self.assertEqual(self.test_engine.embedder, "abstract_embedder")
         self.assertIsInstance(self.test_engine._estimator, Estimator)
-        self.assertEqual(self.test_engine.estimator, 'abstract_estimator')
+        self.assertEqual(self.test_engine.estimator, "abstract_estimator")
 
     def test_setters_with_not_existing_models(self):
         logging.disable(logging.WARNING)
-        self.empty_engine.detector = 'my_detector'
-        self.empty_engine.embedder = 'my_embedder'
-        self.empty_engine.estimator = 'my_estimator'
-        self.assertNotEqual(self.empty_engine.detector, 'my_detector')
-        self.assertEqual(self.empty_engine.detector, 'abstract_detector')
-        self.assertNotEqual(self.empty_engine.embedder, 'my_embedder')
-        self.assertEqual(self.empty_engine.embedder, 'abstract_embedder')
-        self.assertNotEqual(self.empty_engine.estimator, 'my_estimator')
-        self.assertEqual(self.empty_engine.estimator, 'abstract_estimator')
+        self.empty_engine.detector = "my_detector"
+        self.empty_engine.embedder = "my_embedder"
+        self.empty_engine.estimator = "my_estimator"
+        self.assertNotEqual(self.empty_engine.detector, "my_detector")
+        self.assertEqual(self.empty_engine.detector, "abstract_detector")
+        self.assertNotEqual(self.empty_engine.embedder, "my_embedder")
+        self.assertEqual(self.empty_engine.embedder, "abstract_embedder")
+        self.assertNotEqual(self.empty_engine.estimator, "my_estimator")
+        self.assertEqual(self.empty_engine.estimator, "abstract_estimator")
 
     @unittest.skipIf(dlib, "dlib package is installed")
     def test_setters_with_none_without_dlib(self):
         self.test_engine.detector = None
         self.test_engine.embedder = None
         self.test_engine.estimator = None
-        self.assertEqual(self.test_engine.detector, 'abstract_detector')
-        self.assertEqual(self.test_engine.embedder, 'abstract_embedder')
-        self.assertEqual(self.test_engine.estimator, 'basic')
+        self.assertEqual(self.test_engine.detector, "abstract_detector")
+        self.assertEqual(self.test_engine.embedder, "abstract_embedder")
+        self.assertEqual(self.test_engine.estimator, "basic")
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_setters_with_none_with_dlib(self):
         self.test_engine.detector = None
         self.test_engine.embedder = None
         self.test_engine.estimator = None
-        self.assertEqual(self.test_engine.detector, 'hog')
-        self.assertEqual(self.test_engine.embedder, 'resnet')
-        self.assertEqual(self.test_engine.estimator, 'basic')
+        self.assertEqual(self.test_engine.detector, "hog")
+        self.assertEqual(self.test_engine.embedder, "resnet")
+        self.assertEqual(self.test_engine.estimator, "basic")
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_getters(self):
@@ -206,9 +204,8 @@ class TestFaceEngine(TestCase):
         bubbles1 = imread(self.bubbles1)
         bbs, _ = self.test_engine.find_faces(bubbles1)
         embeddings = self.test_engine.compute_embeddings(bubbles1, bbs)
-        self.assertEqual(
-            embeddings.size, self.test_engine._embedder.embedding_dim)
+        self.assertEqual(embeddings.size, self.test_engine._embedder.embedding_dim)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

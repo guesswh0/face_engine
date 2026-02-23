@@ -6,37 +6,37 @@ Used to download and unpack project models and testing data.
 import os
 from urllib.request import urlretrieve
 
+import platformdirs
 import tqdm
 
-RESOURCES = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), 'resources'))
+RESOURCES = platformdirs.user_cache_dir("face_engine")
 
 
 def fetch_file(url, extract_dir=None):
     """Fetch file by URL to extract_dir folder"""
     if not extract_dir:
         extract_dir = RESOURCES
-    else:
-        # make sure the dir exists
-        if not os.path.isdir(extract_dir):
-            os.makedirs(os.path.abspath(extract_dir))
-    origin = url.split('/')[-1]
+
+    # make sure the dir exists
+    if not os.path.isdir(extract_dir):
+        os.makedirs(os.path.abspath(extract_dir), exist_ok=True)
+    origin = url.split("/")[-1]
     # check if file exists
     file = os.path.join(extract_dir, origin)
     if os.path.exists(file):
         return
     # download file
     with tqdm.tqdm(
-            unit='B',
-            unit_scale=True,
-            unit_divisor=1024,
-            miniters=1,
-            desc=f"Downloading file: {origin}"
+        unit="B",
+        unit_scale=True,
+        unit_divisor=1024,
+        miniters=1,
+        desc=f"Downloading file: {origin}",
     ) as t:
         reporthook = _tqdm_hook(t)
         temp, _ = urlretrieve(url, None, reporthook)
     os.replace(temp, file)
-    for ext in ['.bz2', '.zip', '.tar', 'gz']:
+    for ext in [".bz2", ".zip", ".tar", "gz"]:
         if origin.endswith(ext):
             unpack_archive(file, extract_dir)
 
@@ -75,11 +75,12 @@ def unpack_archive(filename, extract_dir=None):
     import shutil
 
     # hardcoded for .dat.bz2
-    if filename.endswith('.dat.bz2'):
+    if filename.endswith(".dat.bz2"):
         shutil.register_unpack_format(
-            'bzip2', ['dat.bz2'], _unpack_bz2, [], "bzip2'ed dat file")
-        shutil.unpack_archive(filename, extract_dir, 'bzip2')
-        shutil.unregister_unpack_format('bzip2')
+            "bzip2", ["dat.bz2"], _unpack_bz2, [], "bzip2'ed dat file"
+        )
+        shutil.unpack_archive(filename, extract_dir, "bzip2")
+        shutil.unregister_unpack_format("bzip2")
     else:
         shutil.unpack_archive(filename, extract_dir)
 
@@ -87,8 +88,9 @@ def unpack_archive(filename, extract_dir=None):
 def _unpack_bz2(filename, extract_dir):
     import bz2
 
-    with open(filename, 'rb') as archive:
+    with open(filename, "rb") as archive:
         data = bz2.decompress(archive.read())
-        with open(os.path.join(extract_dir, os.path.basename(filename)[:-4]),
-                  'wb') as file:
+        with open(
+            os.path.join(extract_dir, os.path.basename(filename)[:-4]), "wb"
+        ) as file:
             file.write(data)

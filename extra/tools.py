@@ -12,7 +12,7 @@ class ImageClass:
         self.size = len(self.image_paths)
 
     def __str__(self):
-        return self.name + ', ' + str(self.size) + ' images'
+        return self.name + ", " + str(self.size) + " images"
 
     def __len__(self):
         return self.size
@@ -28,8 +28,8 @@ class FaceImage(ImageClass):
 
 
 def is_image(filename):
-    ext = filename.rsplit('.', 1)[-1].lower()
-    return '.' in filename and ext in ['jpg', 'jpeg', 'png']
+    ext = filename.rsplit(".", 1)[-1].lower()
+    return "." in filename and ext in ["jpg", "jpeg", "png"]
 
 
 def get_image_paths(dir, shuffle=False):
@@ -47,8 +47,9 @@ def get_image_paths(dir, shuffle=False):
 def get_image_dataset(dir, shuffle=False):
     dataset = []
     dir = os.path.expanduser(dir)
-    class_names = [name for name in os.listdir(dir)
-                   if os.path.isdir(os.path.join(dir, name))]
+    class_names = [
+        name for name in os.listdir(dir) if os.path.isdir(os.path.join(dir, name))
+    ]
     if shuffle:
         np.random.shuffle(class_names)
     else:
@@ -64,6 +65,7 @@ def get_face_dataset(dir, engine, shuffle=False):
     """Generator of FaceImages"""
     from face_engine.exceptions import FaceNotFoundError
     from face_engine.tools import imread
+
     dataset = get_image_dataset(dir, shuffle)
     if shuffle:
         np.random.shuffle(dataset)

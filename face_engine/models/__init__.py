@@ -2,7 +2,7 @@
 FaceEngine models API.
 """
 
-__all__ = ['Detector', 'Embedder', 'Estimator', '_models']
+__all__ = ["Detector", "Embedder", "Estimator", "_models"]
 
 from face_engine.tools import import_package
 
@@ -30,7 +30,7 @@ class Model:
             cls.name = name
             _models[name] = cls
         elif cls.__name__ in __all__:
-            cls.name = 'abstract_' + cls.__name__.lower()
+            cls.name = "abstract_" + cls.__name__.lower()
             _models[cls.name] = cls
         super().__init_subclass__(**kwargs)
 
