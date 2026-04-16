@@ -27,14 +27,21 @@ class BasicEstimator(Estimator, name="basic"):
         if self.class_names is None:
             raise TrainError("Model is not fitted yet!")
 
-        scores = []
-        class_names = []
-        for embedding in embeddings:
-            distances = np.linalg.norm(self.embeddings - embedding, axis=1)
-            index = np.argmin(distances)
-            score = np.exp(-0.5 * distances[index] ** 2)
-            scores.append(score)
-            class_names.append(self.class_names[index])
+        if len(embeddings) == 0:
+            return [], []
+
+        # Vectorized distance calculation using the formula:
+        # ||a-b||^2 = ||a||^2 + ||b||^2 - 2ab
+        a2 = np.sum(embeddings**2, axis=1, keepdims=True)
+        b2 = np.sum(self.embeddings**2, axis=1)
+        ab = np.dot(embeddings, self.embeddings.T)
+        dist2 = np.maximum(a2 + b2 - 2 * ab, 0)
+
+        indices = np.argmin(dist2, axis=1)
+        # score = exp(-0.5 * dist^2)
+        scores = np.exp(-0.5 * dist2[np.arange(len(embeddings)), indices]).tolist()
+        class_names = [self.class_names[i] for i in indices]
+
         return scores, class_names
 
     def save(self, dirname):
