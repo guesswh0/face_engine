@@ -20,21 +20,39 @@ class BasicEstimator(Estimator, name="basic"):
         self.class_names = None
 
     def fit(self, embeddings, class_names, **kwargs):
-        self.embeddings = embeddings
+        self.embeddings = np.asarray(embeddings)
         self.class_names = class_names
 
     def predict(self, embeddings):
         if self.class_names is None:
             raise TrainError("Model is not fitted yet!")
 
-        scores = []
-        class_names = []
-        for embedding in embeddings:
-            distances = np.linalg.norm(self.embeddings - embedding, axis=1)
-            index = np.argmin(distances)
-            score = np.exp(-0.5 * distances[index] ** 2)
-            scores.append(score)
-            class_names.append(self.class_names[index])
+        # return empty if no embeddings provided
+        if len(embeddings) == 0:
+            return [], []
+
+        # Ensure embeddings is a numpy array
+        embeddings = np.asarray(embeddings)
+
+        # Vectorized distance calculation using squared distance expansion:
+        # ||a-b||^2 = ||a||^2 + ||b||^2 - 2*a.b
+        # This is much faster than the iterative approach for large batches.
+        # Shape of self.embeddings is (N, D), embeddings is (M, D)
+        a_sq = np.sum(embeddings**2, axis=1, keepdims=True)  # (M, 1)
+        b_sq = np.sum(self.embeddings**2, axis=1)  # (N,)
+        ab = np.dot(embeddings, self.embeddings.T)  # (M, N)
+
+        # dists_sq has shape (M, N)
+        dists_sq = a_sq + b_sq - 2 * ab
+        # Ensure no negative values due to numerical instability
+        dists_sq = np.maximum(dists_sq, 0)
+
+        indices = np.argmin(dists_sq, axis=1)
+        min_dists_sq = dists_sq[np.arange(len(embeddings)), indices]
+
+        scores = np.exp(-0.5 * min_dists_sq).tolist()
+        class_names = [self.class_names[i] for i in indices]
+
         return scores, class_names
 
     def save(self, dirname):
