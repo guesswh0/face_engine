@@ -19,22 +19,49 @@ class BasicEstimator(Estimator, name="basic"):
         self.embeddings = None
         self.class_names = None
 
-    def fit(self, embeddings, class_names, **kwargs):
-        self.embeddings = embeddings
+    def fit(self, embeddings, class_names, **_kwargs):
+        # Ensure embeddings is a NumPy array for optimized distance calculations
+        self.embeddings = (
+            embeddings if isinstance(embeddings, np.ndarray) else np.array(embeddings)
+        )
         self.class_names = class_names
 
     def predict(self, embeddings):
         if self.class_names is None:
             raise TrainError("Model is not fitted yet!")
 
-        scores = []
-        class_names = []
-        for embedding in embeddings:
-            distances = np.linalg.norm(self.embeddings - embedding, axis=1)
-            index = np.argmin(distances)
-            score = np.exp(-0.5 * distances[index] ** 2)
-            scores.append(score)
-            class_names.append(self.class_names[index])
+        if len(embeddings) == 0:
+            return [], []
+
+        # Ensure input embeddings is a NumPy array
+        if not isinstance(embeddings, np.ndarray):
+            embeddings = np.array(embeddings)
+
+        # Optimized vectorized distance calculation using squared distance expansion:
+        # ||a-b||^2 = ||a||^2 + ||b||^2 - 2ab
+        # M: number of input embeddings, N: number of fitted embeddings
+        # embeddings: (M, D), self.embeddings: (N, D)
+
+        # (M,)
+        a_sq = np.sum(np.square(embeddings), axis=1)
+        # (N,)
+        b_sq = np.sum(np.square(self.embeddings), axis=1)
+        # (M, N)
+        ab = np.dot(embeddings, self.embeddings.T)
+
+        # (M, N) using broadcasting: (M, 1) + (N,) - 2 * (M, N)
+        sq_distances = a_sq[:, np.newaxis] + b_sq - 2 * ab
+        # Ensure no negative values due to numerical instability
+        sq_distances = np.maximum(sq_distances, 0)
+
+        # Find indices of minimum distances for each input embedding
+        indices = np.argmin(sq_distances, axis=1)
+        min_sq_distances = sq_distances[np.arange(len(embeddings)), indices]
+
+        # Calculate scores and retrieve class names
+        scores = np.exp(-0.5 * min_sq_distances).tolist()
+        class_names = [self.class_names[i] for i in indices]
+
         return scores, class_names
 
     def save(self, dirname):
