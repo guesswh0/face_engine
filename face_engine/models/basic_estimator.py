@@ -22,19 +22,34 @@ class BasicEstimator(Estimator, name="basic"):
     def fit(self, embeddings, class_names, **kwargs):
         self.embeddings = embeddings
         self.class_names = class_names
+        # Pre-calculate squared norms of fitted embeddings for faster prediction
+        self._sq_norm_fitted = np.sum(self.embeddings**2, axis=1)
 
     def predict(self, embeddings):
         if self.class_names is None:
             raise TrainError("Model is not fitted yet!")
 
-        scores = []
-        class_names = []
-        for embedding in embeddings:
-            distances = np.linalg.norm(self.embeddings - embedding, axis=1)
-            index = np.argmin(distances)
-            score = np.exp(-0.5 * distances[index] ** 2)
-            scores.append(score)
-            class_names.append(self.class_names[index])
+        if len(embeddings) == 0:
+            return [], []
+
+        # Vectorized implementation using the squared distance expansion:
+        # ||a - b||^2 = ||a||^2 + ||b||^2 - 2 * <a, b>
+        # This significantly speeds up batch predictions by reducing redundant calculations.
+        dot_product = np.dot(embeddings, self.embeddings.T)
+        sq_norm_query = np.sum(embeddings**2, axis=1, keepdims=True)
+
+        # sq_distances is (n_faces, n_samples)
+        sq_distances = np.maximum(sq_norm_query + self._sq_norm_fitted - 2 * dot_product, 0)
+        distances = np.sqrt(sq_distances)
+
+        # Find the index of the closest fitted embedding for each input face
+        indices = np.argmin(distances, axis=1)
+        min_distances = distances[np.arange(len(embeddings)), indices]
+
+        # Calculate scores and retrieve class names
+        scores = np.exp(-0.5 * min_distances**2).tolist()
+        class_names = [self.class_names[i] for i in indices]
+
         return scores, class_names
 
     def save(self, dirname):
