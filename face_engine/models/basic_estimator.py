@@ -22,19 +22,41 @@ class BasicEstimator(Estimator, name="basic"):
     def fit(self, embeddings, class_names, **kwargs):
         self.embeddings = embeddings
         self.class_names = class_names
+        # Optimization: Pre-calculate squared norms of fitted embeddings
+        # to speed up vectorized distance calculation in predict method.
+        self._sq_norm_fitted = np.sum(self.embeddings**2, axis=1)
 
     def predict(self, embeddings):
         if self.class_names is None:
             raise TrainError("Model is not fitted yet!")
 
-        scores = []
-        class_names = []
-        for embedding in embeddings:
-            distances = np.linalg.norm(self.embeddings - embedding, axis=1)
-            index = np.argmin(distances)
-            score = np.exp(-0.5 * distances[index] ** 2)
-            scores.append(score)
-            class_names.append(self.class_names[index])
+        if len(embeddings) == 0:
+            return [], []
+
+        # Ensure backward compatibility if loaded from an older model state
+        if not hasattr(self, "_sq_norm_fitted"):
+            self._sq_norm_fitted = np.sum(self.embeddings**2, axis=1)
+
+        # Optimization: Use squared distance expansion formula to vectorize calculation:
+        # ||a-b||^2 = ||a||^2 + ||b||^2 - 2ab
+        # This avoids expensive Python loops and significantly improves performance.
+        sq_norm_input = np.sum(embeddings**2, axis=1)
+        # Using np.dot for efficient matrix multiplication
+        dists_sq = (
+            self._sq_norm_fitted
+            + sq_norm_input[:, np.newaxis]
+            - 2 * np.dot(embeddings, self.embeddings.T)
+        )
+
+        # Handle potential negative values due to floating point precision
+        dists_sq = np.maximum(dists_sq, 0)
+
+        indices = np.argmin(dists_sq, axis=1)
+        min_dists_sq = dists_sq[np.arange(len(indices)), indices]
+
+        scores = np.exp(-0.5 * min_dists_sq).tolist()
+        class_names = [self.class_names[i] for i in indices]
+
         return scores, class_names
 
     def save(self, dirname):
