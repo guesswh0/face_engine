@@ -18,23 +18,42 @@ class BasicEstimator(Estimator, name="basic"):
     def __init__(self):
         self.embeddings = None
         self.class_names = None
+        self._sq_norm_fitted = None
 
     def fit(self, embeddings, class_names, **kwargs):
-        self.embeddings = embeddings
+        self.embeddings = np.asarray(embeddings)
         self.class_names = class_names
+        # Pre-calculate squared norms for faster distance computation in predict
+        self._sq_norm_fitted = np.sum(self.embeddings**2, axis=1)
 
     def predict(self, embeddings):
         if self.class_names is None:
             raise TrainError("Model is not fitted yet!")
 
-        scores = []
-        class_names = []
-        for embedding in embeddings:
-            distances = np.linalg.norm(self.embeddings - embedding, axis=1)
-            index = np.argmin(distances)
-            score = np.exp(-0.5 * distances[index] ** 2)
-            scores.append(score)
-            class_names.append(self.class_names[index])
+        if len(embeddings) == 0:
+            return [], []
+
+        embeddings = np.asarray(embeddings)
+
+        # Ensure backward compatibility if model was loaded without _sq_norm_fitted
+        if not hasattr(self, "_sq_norm_fitted") or self._sq_norm_fitted is None:
+            self._sq_norm_fitted = np.sum(self.embeddings**2, axis=1)
+
+        # Vectorized distance calculation using (a-b)^2 = a^2 + b^2 - 2ab
+        dot_product = np.dot(embeddings, self.embeddings.T)
+        square_norm_input = np.sum(embeddings**2, axis=1, keepdims=True)
+
+        # Distances squared: (M, 1) + (N,) - (M, N) -> (M, N)
+        dists_sq = square_norm_input + self._sq_norm_fitted - 2 * dot_product
+        # Handle potential negative values due to floating point precision
+        dists_sq = np.maximum(dists_sq, 0)
+
+        indices = np.argmin(dists_sq, axis=1)
+        min_dists_sq = dists_sq[np.arange(len(embeddings)), indices]
+
+        # Calculate scores and class names
+        scores = np.exp(-0.5 * min_dists_sq).tolist()
+        class_names = [self.class_names[i] for i in indices]
         return scores, class_names
 
     def save(self, dirname):
@@ -46,3 +65,9 @@ class BasicEstimator(Estimator, name="basic"):
         name = "%s.estimator.%s" % (self.name, "p")
         with open(os.path.join(dirname, name), "rb") as file:
             self.__dict__.update(pickle.load(file))
+
+        # Ensure backward compatibility for pre-calculated norms
+        if self.embeddings is not None and (
+            not hasattr(self, "_sq_norm_fitted") or self._sq_norm_fitted is None
+        ):
+            self._sq_norm_fitted = np.sum(self.embeddings**2, axis=1)
