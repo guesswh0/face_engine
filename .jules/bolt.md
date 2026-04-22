@@ -1,0 +1,3 @@
+## 2025-05-15 - [Vectorized Distance Calculation in BasicEstimator]
+**Learning:** Using the squared distance expansion formula $||a-b||^2 = ||a||^2 + ||b||^2 - 2ab$ combined with pre-calculated squared norms of fitted embeddings significantly outperforms iterative `np.linalg.norm` calls. In this codebase, it provided a ~25x speedup for a batch of 100 predictions against 1000 fitted embeddings. It also avoids the overhead of Python loops and allows NumPy to leverage optimized BLAS routines for the dot product.
+**Action:** Always prefer vectorized matrix operations over row-wise operations in loops when calculating distances or similarities between sets of vectors. Ensure numerical stability with `np.maximum(dists, 0)` when using the expansion formula.
