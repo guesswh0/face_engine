@@ -94,10 +94,11 @@ def unpack_archive(filename, extract_dir=None):
 
 def _unpack_bz2(filename, extract_dir):
     import bz2
+    import shutil
 
-    with open(filename, "rb") as archive:
-        data = bz2.decompress(archive.read())
-        with open(
-            os.path.join(extract_dir, os.path.basename(filename)[:-4]), "wb"
-        ) as file:
-            file.write(data)
+    # Optimization: using bz2.open and shutil.copyfileobj avoids loading
+    # the entire decompressed file into memory at once.
+    with bz2.open(filename, "rb") as archive:
+        target_path = os.path.join(extract_dir, os.path.basename(filename)[:-4])
+        with open(target_path, "wb") as file:
+            shutil.copyfileobj(archive, file)

@@ -371,7 +371,12 @@ class FaceEngine:
                 ][:limit]
             # limit extra fields if any exist
             for key, value in extra.items():
-                extra[key] = extra[key][limit]
+                # Bug Fix: use indices to filter extra data to maintain alignment
+                # with filtered bounding boxes.
+                if isinstance(extra[key], np.ndarray):
+                    extra[key] = extra[key][indices]
+                else:
+                    extra[key] = [extra[key][i] for i in indices]
             bbs = bbs[indices]
 
         if normalize:
