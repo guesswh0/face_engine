@@ -1,0 +1,3 @@
+## 2025-05-14 - Vectorized Distance Calculation for Face Embeddings
+**Learning:** Vectorizing distance calculations using the expansion formula $\|a-b\|^2 = \|a\|^2 + \|b\|^2 - 2ab$ significantly improves performance for face recognition prediction tasks (observed ~13x speedup). However, this method can introduce tiny negative values due to floating-point precision errors (subtractive cancellation), which must be handled using `np.maximum(dists_sq, 0)`.
+**Action:** When implementing batch similarity or distance calculations, prefer matrix operations over Python loops. Always include a safety clip for squared distances and use relaxed tolerances (`rtol=1e-4`) in verification tests to account for numerical noise differences compared to standard `np.linalg.norm`.
