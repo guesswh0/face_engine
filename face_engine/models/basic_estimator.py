@@ -22,20 +22,39 @@ class BasicEstimator(Estimator, name="basic"):
     def fit(self, embeddings, class_names, **kwargs):
         self.embeddings = embeddings
         self.class_names = class_names
+        # Pre-calculate squared norms for faster distance computation in predict
+        self.norms_sq = np.sum(self.embeddings**2, axis=1)
 
     def predict(self, embeddings):
         if self.class_names is None:
             raise TrainError("Model is not fitted yet!")
 
-        scores = []
-        class_names = []
-        for embedding in embeddings:
-            distances = np.linalg.norm(self.embeddings - embedding, axis=1)
-            index = np.argmin(distances)
-            score = np.exp(-0.5 * distances[index] ** 2)
-            scores.append(score)
-            class_names.append(self.class_names[index])
-        return scores, class_names
+        if len(embeddings) == 0:
+            return [], []
+
+        # Vectorized computation of squared distances
+        # ||a - b||^2 = ||a||^2 + ||b||^2 - 2 * a . b
+        # a: fitted embeddings, b: input embeddings
+        norms_sq = getattr(self, "norms_sq", None)
+        if norms_sq is None:
+            # Backward compatibility for models fitted with older version
+            norms_sq = np.sum(self.embeddings**2, axis=1)
+
+        b_sq = np.sum(embeddings**2, axis=1)
+        ab = np.dot(embeddings, self.embeddings.T)
+
+        # dists_sq has shape (n_queries, n_samples)
+        dists_sq = norms_sq[np.newaxis, :] + b_sq[:, np.newaxis] - 2 * ab
+        # Ensure no negative values due to floating point errors
+        dists_sq = np.maximum(dists_sq, 0)
+
+        indices = np.argmin(dists_sq, axis=1)
+        min_dists_sq = dists_sq[np.arange(len(embeddings)), indices]
+
+        scores = np.exp(-0.5 * min_dists_sq)
+        predicted_classes = [self.class_names[i] for i in indices]
+
+        return scores.tolist(), predicted_classes
 
     def save(self, dirname):
         name = "%s.estimator.%s" % (self.name, "p")
