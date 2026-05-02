@@ -18,23 +18,49 @@ class BasicEstimator(Estimator, name="basic"):
     def __init__(self):
         self.embeddings = None
         self.class_names = None
+        self.norms_sq = None
 
-    def fit(self, embeddings, class_names, **kwargs):
+    def fit(self, embeddings, class_names, **_):
         self.embeddings = embeddings
         self.class_names = class_names
+        # Pre-calculate squared norms for faster distance calculation in predict
+        self.norms_sq = np.sum(np.square(self.embeddings), axis=1)
 
     def predict(self, embeddings):
+        """Vectorized prediction using expansion formula for Euclidean distance:
+        ||a-b||^2 = ||a||^2 + ||b||^2 - 2ab
+        """
         if self.class_names is None:
             raise TrainError("Model is not fitted yet!")
 
-        scores = []
-        class_names = []
-        for embedding in embeddings:
-            distances = np.linalg.norm(self.embeddings - embedding, axis=1)
-            index = np.argmin(distances)
-            score = np.exp(-0.5 * distances[index] ** 2)
-            scores.append(score)
-            class_names.append(self.class_names[index])
+        if len(embeddings) == 0:
+            return [], []
+
+        # norms_sq of fitted embeddings (N,)
+        norms_sq_fitted = getattr(self, "norms_sq", None)
+        if norms_sq_fitted is None:
+            # Fallback for models fitted with older versions
+            norms_sq_fitted = np.sum(np.square(self.embeddings), axis=1)
+
+        # norms_sq of query embeddings (M,)
+        norms_sq_query = np.sum(np.square(embeddings), axis=1)
+
+        # Dot product (M, N)
+        dot_product = np.dot(embeddings, self.embeddings.T)
+
+        # Squared Euclidean distances (M, N) using broadcasting
+        # (M, 1) + (N,) - 2 * (M, N)
+        dists_sq = norms_sq_query[:, np.newaxis] + norms_sq_fitted - 2 * dot_product
+
+        # Numerical stability: distances squared should be >= 0
+        dists_sq = np.maximum(dists_sq, 0)
+
+        indices = np.argmin(dists_sq, axis=1)
+        min_dists_sq = dists_sq[np.arange(len(embeddings)), indices]
+
+        scores = np.exp(-0.5 * min_dists_sq).tolist()
+        class_names = [self.class_names[i] for i in indices]
+
         return scores, class_names
 
     def save(self, dirname):
