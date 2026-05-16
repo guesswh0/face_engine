@@ -18,24 +18,42 @@ class BasicEstimator(Estimator, name="basic"):
     def __init__(self):
         self.embeddings = None
         self.class_names = None
+        self.fitted_norms_sq = None
 
     def fit(self, embeddings, class_names, **kwargs):
         self.embeddings = embeddings
         self.class_names = class_names
+        # Pre-calculate squared norms for faster distance computation in predict
+        self.fitted_norms_sq = np.sum(self.embeddings**2, axis=1)
 
     def predict(self, embeddings):
         if self.class_names is None:
             raise TrainError("Model is not fitted yet!")
 
-        scores = []
-        class_names = []
-        for embedding in embeddings:
-            distances = np.linalg.norm(self.embeddings - embedding, axis=1)
-            index = np.argmin(distances)
-            score = np.exp(-0.5 * distances[index] ** 2)
-            scores.append(score)
-            class_names.append(self.class_names[index])
-        return scores, class_names
+        embeddings = np.asarray(embeddings)
+        if embeddings.size == 0:
+            return [], []
+
+        # Vectorized distance calculation using the expansion formula:
+        # ||a - b||^2 = ||a||^2 + ||b||^2 - 2 * <a, b>
+        # This avoids the expensive O(M*N*D) Python loop and leverages BLAS for matrix multiplication.
+
+        # query_norms_sq shape: (M,)
+        query_norms_sq = np.sum(embeddings**2, axis=1)
+        # dot_product shape: (M, N)
+        dot_product = np.dot(embeddings, self.embeddings.T)
+
+        # dists_sq shape: (M, N)
+        dists_sq = self.fitted_norms_sq[None, :] + query_norms_sq[:, None] - 2 * dot_product
+        dists_sq = np.maximum(dists_sq, 0)  # Numerical stability: distances can't be negative
+
+        indices = np.argmin(dists_sq, axis=1)
+        min_dists_sq = dists_sq[np.arange(len(embeddings)), indices]
+
+        scores = np.exp(-0.5 * min_dists_sq).tolist()
+        predicted_names = [self.class_names[i] for i in indices]
+
+        return scores, predicted_names
 
     def save(self, dirname):
         name = "%s.estimator.%s" % (self.name, "p")
@@ -46,3 +64,7 @@ class BasicEstimator(Estimator, name="basic"):
         name = "%s.estimator.%s" % (self.name, "p")
         with open(os.path.join(dirname, name), "rb") as file:
             self.__dict__.update(pickle.load(file))
+
+        # Backward compatibility: re-calculate norms if they are missing from a serialized model
+        if self.embeddings is not None and getattr(self, "fitted_norms_sq", None) is None:
+            self.fitted_norms_sq = np.sum(self.embeddings**2, axis=1)
