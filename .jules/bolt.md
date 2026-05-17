@@ -1,0 +1,3 @@
+## 2025-05-15 - Vectorized Distance Expansion Formula Numerical Stability
+**Learning:** Using the expansion formula ||a-b||^2 = ||a||^2 + ||b||^2 - 2ab for vectorized distance calculation provides significant speedup (leveraging BLAS dot product) but can introduce small floating-point discrepancies (negative values) due to subtractive cancellation.
+**Action:** Always use `np.maximum(dists_sq, 0)` when using the expansion formula and allow slightly relaxed test tolerances (e.g., `rtol=1e-4`) if comparing against `np.linalg.norm`. Avoid redundant square root calculations if the downstream formula (like Radial Basis Function) uses squared distance directly.
