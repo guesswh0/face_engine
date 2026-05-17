@@ -364,14 +364,17 @@ class FaceEngine:
         n_det = len(bbs)
         if isinstance(limit, int) and limit < n_det:
             if self.detector in ["hog", "mmod"]:
-                indices = range(limit)
+                indices = np.arange(limit)
             else:
-                indices = np.argsort([(bb[2] - bb[0]) * (bb[3] - bb[1]) for bb in bbs])[
-                    ::-1
-                ][:limit]
+                # Vectorized bounding box area calculation
+                areas = (bbs[:, 2] - bbs[:, 0]) * (bbs[:, 3] - bbs[:, 1])
+                indices = np.argsort(areas)[::-1][:limit]
             # limit extra fields if any exist
             for key, value in extra.items():
-                extra[key] = extra[key][limit]
+                if isinstance(value, np.ndarray):
+                    extra[key] = value[indices]
+                elif isinstance(value, list):
+                    extra[key] = [value[i] for i in indices]
             bbs = bbs[indices]
 
         if normalize:
