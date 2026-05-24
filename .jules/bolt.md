@@ -1,0 +1,3 @@
+## 2025-05-14 - [Vectorized Euclidean Distance and Floating Point Precision]
+**Learning:** Using the squared distance expansion formula ||a-b||² = ||a||² + ||b||² - 2ab in NumPy is significantly faster than loop-based `np.linalg.norm` because it leverages optimized BLAS matrix multiplication. However, it can produce small negative values for identical or very similar vectors due to subtractive cancellation (floating-point inaccuracies).
+**Action:** Always use `np.maximum(dists_sq, 0)` when using the expansion formula and allow slightly more relaxed tolerances (`rtol=1e-4`) in benchmarks/tests compared to the direct `linalg.norm` calculation.
