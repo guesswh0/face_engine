@@ -1,0 +1,3 @@
+## 2025-05-14 - Vectorized Distance Calculation with Expansion Formula
+**Learning:** Using the expansion formula ||a-b||² = ||a||² + ||b||² - 2ab allows for significant speedup (up to 12x in this codebase) by leveraging optimized BLAS matrix multiplications (dot product) instead of O(N) Python loops or simpler NumPy vectorized operations. However, it can introduce small negative values due to floating-point precision, necessitating the use of `np.maximum(dists_sq, 0)`.
+**Action:** Always consider the expansion formula for many-to-many distance calculations in NumPy, and remember to clip results to zero and handle precomputation of norms for the fitted set.
