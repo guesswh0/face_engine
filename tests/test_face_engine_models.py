@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import numpy as np
@@ -7,10 +8,20 @@ from face_engine.exceptions import FaceNotFoundError
 from face_engine.models import Detector, Embedder, Estimator
 from face_engine.models.basic_estimator import BasicEstimator
 from face_engine.tools import imread
-from tests import TestCase, dlib
+from tests import TestCase, dlib, insightface
 
 if dlib:
     from face_engine.models.dlib_models import HOGDetector, MMODDetector, ResNetEmbedder
+if insightface:
+    from face_engine.models.insightface_models import (
+        ArcFaceAntelopeV2Embedder,
+        ArcFaceEmbedder,
+        SCRFDAntelopeV2Detector,
+        SCRFDDetector,
+    )
+
+# antelopev2 tests are gated behind an env var (407 MB model pack download)
+ANTELOPE = os.environ.get("FACE_ENGINE_TEST_ANTELOPE") == "1"
 
 
 class TestDetector(TestCase):
@@ -55,6 +66,20 @@ class TestMMODDetector(TestDetector):
         self.detector = MMODDetector()
 
 
+@unittest.skipUnless(insightface, "insightface package is not installed")
+class TestSCRFDDetector(TestDetector):
+
+    def setUp(self):
+        self.detector = SCRFDDetector()
+
+
+@unittest.skipUnless(insightface and ANTELOPE, "antelopev2 tests are not enabled")
+class TestSCRFDAntelopeV2Detector(TestDetector):
+
+    def setUp(self):
+        self.detector = SCRFDAntelopeV2Detector()
+
+
 class TestEmbedder(TestCase):
     """Test cases to test embedders.
 
@@ -91,6 +116,48 @@ class TestResNetEmbedder(TestEmbedder):
     def setUp(self):
         super().setUp()
         self.embedder = ResNetEmbedder()
+
+
+class TestInsightFaceEmbedder(TestCase):
+    """Test cases for insightface embedders which require detector
+    keypoints (``kpss``) for face alignment.
+
+    Note that this abstract class is not collected by unittest.
+    """
+
+    def setUp(self):
+        self.image = imread(self.bubbles1)
+        self.detector = None
+        self.embedder = None
+
+    def test_compute_embeddings_return_data_shape(self):
+        bbs, extra = self.detector.detect(self.image)
+        embeddings = self.embedder.compute_embeddings(self.image, bbs, **extra)
+        self.assertIsInstance(embeddings, np.ndarray)
+        self.assertEqual(embeddings.shape, (len(bbs), self.embedder.embedding_dim))
+
+    def test_compute_embeddings_without_kpss_raises(self):
+        bbs, _ = self.detector.detect(self.image)
+        with self.assertRaises(AssertionError):
+            self.embedder.compute_embeddings(self.image, bbs)
+
+
+@unittest.skipUnless(insightface, "insightface package is not installed")
+class TestArcFaceEmbedder(TestInsightFaceEmbedder):
+
+    def setUp(self):
+        super().setUp()
+        self.detector = SCRFDDetector()
+        self.embedder = ArcFaceEmbedder()
+
+
+@unittest.skipUnless(insightface and ANTELOPE, "antelopev2 tests are not enabled")
+class TestArcFaceAntelopeV2Embedder(TestInsightFaceEmbedder):
+
+    def setUp(self):
+        super().setUp()
+        self.detector = SCRFDAntelopeV2Detector()
+        self.embedder = ArcFaceAntelopeV2Embedder()
 
 
 class TestEstimator(TestCase):
@@ -131,6 +198,7 @@ class TestBasicEstimator(TestEstimator):
 # remove abstract tests
 del TestDetector
 del TestEmbedder
+del TestInsightFaceEmbedder
 del TestEstimator
 
 if __name__ == "__main__":

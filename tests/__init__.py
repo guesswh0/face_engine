@@ -10,6 +10,11 @@ try:
 except ImportError:
     dlib = None
 
+try:
+    import insightface
+except ImportError:
+    insightface = None
+
 # fetch datasets
 base = "https://github.com/guesswh0/storage/raw/master/"
 extract_dir = os.path.join(RESOURCES, "datasets")

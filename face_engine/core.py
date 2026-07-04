@@ -13,6 +13,27 @@ from .exceptions import FaceNotFoundError
 from .models import _models
 from .tools import imread
 
+# default model fallback chains: insightface -> dlib -> abstract
+_DETECTOR_DEFAULTS = ("scrfd", "hog")
+_EMBEDDER_DEFAULTS = ("arcface", "resnet")
+_ESTIMATOR_DEFAULTS = ("basic",)
+
+
+def _resolve(name: Optional[str], defaults: Tuple[str, ...], kind: str) -> str:
+    """Resolve model name to a registered one, with installed-backend
+    fallbacks for empty names and abstract fallback for unknown names."""
+
+    if not name:
+        for candidate in defaults:
+            if candidate in _models:
+                return candidate
+        return "abstract_" + kind
+    if name not in _models:
+        logger.warning("%s model '%s' not found!", kind.capitalize(), name)
+        return "abstract_" + kind
+    return name
+
+
 _LEGACY_PICKLE_ERROR = (
     "%s appears to be a legacy pickle produced by face-engine < 3.0. "
     "Pickle persistence was removed in 3.0.0 for security. "
@@ -111,20 +132,17 @@ class FaceEngine:
     @detector.setter
     def detector(self, name: Optional[str]) -> None:
         """Face detector model to use:
-            - 'hog': dlib "Histogram Oriented Gradients" model (default).
-            - 'mmod': dlib "Max-Margin Object Detection" model.
+            - 'scrfd': insightface SCRFD model (default with insightface)
+            - 'scrfd_antelopev2': insightface SCRFD model (antelopev2 pack)
+            - 'hog': dlib "Histogram Oriented Gradients" model
+                (default without insightface)
+            - 'mmod': dlib "Max-Margin Object Detection" model
 
         :param name: detector model name
         :type name: str
         """
 
-        if not name:
-            name = "hog"
-        if name not in _models:
-            if name != "hog":
-                logger.warning("Detector model '%s' not found!", name)
-            name = "abstract_detector"
-        Detector = _models.get(name)
+        Detector = _models.get(_resolve(name, _DETECTOR_DEFAULTS, "detector"))
         self._detector = Detector()
 
     @property
@@ -139,19 +157,17 @@ class FaceEngine:
     @embedder.setter
     def embedder(self, name: Optional[str]) -> None:
         """Face embedder model to use:
-            - 'resnet': dlib ResNet model (default)
+            - 'arcface': insightface ArcFace model
+                (default with insightface)
+            - 'arcface_antelopev2': insightface ArcFace model
+                (antelopev2 pack)
+            - 'resnet': dlib ResNet model (default without insightface)
 
         :param name: embedder model name
         :type name: str
         """
 
-        if not name:
-            name = "resnet"
-        if name not in _models:
-            if name != "resnet":
-                logger.warning("Embedder model '%s' not found!", name)
-            name = "abstract_embedder"
-        Embedder = _models.get(name)
+        Embedder = _models.get(_resolve(name, _EMBEDDER_DEFAULTS, "embedder"))
         self._embedder = Embedder()
 
     @property
@@ -172,13 +188,7 @@ class FaceEngine:
         :type name: str
         """
 
-        if not name:
-            name = "basic"
-        if name not in _models:
-            if name != "basic":
-                logger.warning("Estimator model '%s' not found!", name)
-            name = "abstract_estimator"
-        Estimator = _models.get(name)
+        Estimator = _models.get(_resolve(name, _ESTIMATOR_DEFAULTS, "estimator"))
         self._estimator = Estimator()
 
     def save(self, filename: str) -> None:
@@ -383,17 +393,13 @@ class FaceEngine:
         bbs, extra = self._detector.detect(image)
 
         n_det = len(bbs)
-        if isinstance(limit, int) and limit < n_det:
-            if self.detector in ["hog", "mmod"]:
-                indices = range(limit)
-            else:
-                indices = np.argsort([(bb[2] - bb[0]) * (bb[3] - bb[1]) for bb in bbs])[
-                    ::-1
-                ][:limit]
-            # limit extra fields if any exist
-            for key, value in extra.items():
-                extra[key] = extra[key][limit]
-            bbs = bbs[indices]
+        if isinstance(limit, int) and 0 < limit < n_det:
+            # keep the largest faces; stable sort preserves detector order
+            # for equal-sized boxes
+            areas = np.asarray([(bb[2] - bb[0]) * (bb[3] - bb[1]) for bb in bbs])
+            indices = np.argsort(-areas, kind="stable")[:limit]
+            bbs = np.asarray(bbs)[indices]
+            extra = {key: np.asarray(value)[indices] for key, value in extra.items()}
 
         if normalize:
             bbs = bbs / ([width, height] * 2)
