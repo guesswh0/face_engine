@@ -12,21 +12,42 @@ implementations of these models.
 Default models
 --------------
 
-Installation provides optional :ref:`dlib models <dlib-models>`.
+The default backend is `insightface`_ (installed with
+``pip install face-engine[insightface]``), providing the
+:ref:`insightface models <insightface-models>`:
 
-These implementations are using `dlib python api`_ and dlib provided pre-trained
-model `files`_:
+======================= ========== ============ ===========================
+name                    role       model pack   notes
+======================= ========== ============ ===========================
+``scrfd``               detector   buffalo_l    default; deprecated alias
+                                                ``retina_face``
+``arcface``             embedder   buffalo_l    default, 512-d
+``scrfd_antelopev2``    detector   antelopev2   opt-in
+``arcface_antelopev2``  embedder   antelopev2   strongest insightface
+                                                embedder, 512-d
+======================= ========== ============ ===========================
+
+.. warning::
+   The insightface pre-trained model weights (buffalo_l, antelopev2 packs)
+   are licensed for **non-commercial research purposes only**. The library's
+   Apache-2.0 license does not extend to the downloaded model files.
+
+If insightface is not installed, the engine falls back to the legacy
+:ref:`dlib models <dlib-models>` (``hog`` detector, ``resnet`` embedder).
 
 .. note::
    FaceEngine installation is not installing dlib by default.
-   To install it, either run ``pip install dlib`` (requires cmake) or
+   To install it, either run ``pip install dlib`` (requires cmake),
+   install prebuilt wheels with ``pip install dlib-bin``, or
    follow `build instructions`_.
 
-   Dlib models implementations are used to show how to work with FaceEngine.
-   Questions and issues according to these models accuracy and performance
-   please address to dlib.
+   Dlib model files come with their own terms, see `files`_.
 
 At the moment there is:
+    * :class:`~face_engine.models.insightface_models.SCRFDDetector`
+    * :class:`~face_engine.models.insightface_models.SCRFDAntelopeV2Detector`
+    * :class:`~face_engine.models.insightface_models.ArcFaceEmbedder`
+    * :class:`~face_engine.models.insightface_models.ArcFaceAntelopeV2Embedder`
     * :class:`~face_engine.models.dlib_models.HOGDetector`
     * :class:`~face_engine.models.dlib_models.MMODDetector`
     * :class:`~face_engine.models.dlib_models.ResNetEmbedder`
@@ -66,7 +87,7 @@ or use corresponding setter method with model ``name``:
    engine.detector = 'custom_detector'
 
 
-.. _dlib models: https://github.com/guesswh0/face_engine/blob/master/face_engine/models/dlib_models.py
+.. _insightface: https://github.com/deepinsight/insightface
 .. _dlib python api: http://dlib.net/python/index.html
 .. _files: https://github.com/davisking/dlib-models
 .. _build instructions: http://dlib.net/compile.html

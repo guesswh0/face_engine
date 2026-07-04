@@ -2,8 +2,9 @@ Usage examples
 ==============
 
 These examples are using :ref:`default models <default-models>`, therefore
-before trying it be sure that you have dlib installed. Also in some examples
-for simplicity purposes, :ref:`exceptions <exceptions>` are not handled.
+before trying it be sure that you have insightface (or dlib) installed.
+Also in some examples for simplicity purposes,
+:ref:`exceptions <exceptions>` are not handled.
 
 Getting working instances
 -------------------------
@@ -16,14 +17,15 @@ Working with pre-defined default models.
     >>> from face_engine import FaceEngine
     >>> engine = FaceEngine()
     >>> engine.detector
-    'hog'
+    'scrfd'
     >>> engine.embedder
-    'resnet'
+    'arcface'
     >>> engine.estimator
     'basic'
 
-Notice that if dlib is not installed ``detector`` and ``embedder`` models will
-be abstract.
+With dlib installed instead of insightface the defaults are ``'hog'`` and
+``'resnet'``. Notice that if neither backend is installed ``detector`` and
+``embedder`` models will be abstract.
 
 .. code-block:: python
 
@@ -87,7 +89,7 @@ Extract facial embedding vectors from the image.
 
     from face_engine import FaceEngine, tools
     engine = FaceEngine()
-    image = tools.imread('bubbles1.jpg)
+    image = tools.imread('bubbles1.jpg')
     bbs, extra = engine.find_faces(image)
     embeddings = engine.compute_embeddings(image, bbs, **extra)
 
@@ -120,14 +122,15 @@ Make (lazy) prediction to find out class names and bounding boxes in one call.
 Persistence
 -----------
 
-Save engine state to file:
+Save engine state to a JSON file (the fitted estimator state is stored
+next to it, e.g. ``basic.estimator.npz`` and ``basic.estimator.json``):
 
 .. code-block:: python
 
     >>> from face_engine import FaceEngine
     >>> engine = FaceEngine()
     >>> engine.fit(['bubbles1.jpg', 'drive.jpg'], [1, 2])
-    >>> engine.save('engine.p')
+    >>> engine.save('engine.json')
 
 
 Load engine state from file:
@@ -135,9 +138,14 @@ Load engine state from file:
 .. code-block:: python
 
     >>> from face_engine import load_engine
-    >>> engine = load_engine('engine.p')
+    >>> engine = load_engine('engine.json')
     >>> engine.make_prediction('bubbles2.jpg')
     >>> ([(270, 75, 406, 211)], [1])
+
+.. note::
+   Engines saved with face-engine < 3.0 (pickle files) cannot be loaded;
+   re-fit and save again. Pickle persistence was removed for security
+   reasons.
 
 Application examples
 --------------------
@@ -193,7 +201,7 @@ out only class names without prediction scores. To get prediction scores use
     from face_engine.exceptions import FaceNotFoundError
 
     # assume that engine is saved before
-    engine = load_engine('engine.p')
+    engine = load_engine('engine.json')
     cap = cv2.VideoCapture(0)
 
     while True:
