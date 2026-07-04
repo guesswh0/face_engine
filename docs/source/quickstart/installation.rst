@@ -28,10 +28,13 @@ To install the default insightface backend models use:
    Both packages provide the same ``onnxruntime`` module, so installing
    ``onnxruntime-gpu`` alongside the CPU build (which the
    ``[insightface]`` extra always pulls in) leaves whichever installed
-   last — the CPU build must be removed explicitly. No code changes are
-   needed after that: the models pick the CUDA execution provider
-   automatically when it is available, and fall back to CPU otherwise.
-   See the `onnxruntime execution providers`_ documentation for details.
+   last — the CPU build must be removed explicitly. Pip will warn that
+   ``insightface requires onnxruntime, which is not installed`` — this
+   is harmless, ``onnxruntime-gpu`` provides the same module. No code
+   changes are needed after that: the models pick the CUDA execution
+   provider automatically when it is available, and fall back to CPU
+   otherwise. See the `onnxruntime execution providers`_ documentation
+   for details.
 
 .. _onnxruntime execution providers: https://onnxruntime.ai/docs/execution-providers/
 
