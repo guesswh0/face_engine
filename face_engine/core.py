@@ -3,22 +3,28 @@ FaceEngine core module.
 """
 
 from typing import Any, Dict, List, Optional, Tuple, Union
+import json
 import os
-import pickle
 
 import numpy as np
 
-from . import logger
+from . import __version__, logger
 from .exceptions import FaceNotFoundError
 from .models import _models
 from .tools import imread
+
+_LEGACY_PICKLE_ERROR = (
+    "%s appears to be a legacy pickle produced by face-engine < 3.0. "
+    "Pickle persistence was removed in 3.0.0 for security. "
+    "Re-create the engine, re-fit it, then save() again."
+)
 
 
 def load_engine(filename: str) -> "FaceEngine":
     """Loads and restores engine object from the file.
 
-    This function is convenient wrapper of pickle.load() function, and is used
-    to deserialize and restore the engine object from the persisted state.
+    Restores the engine object from the JSON state persisted by
+    :meth:`~FaceEngine.save` method.
 
     Estimator model's state is loaded separately and is loaded only
     if there is something saved before by :meth:`~FaceEngine.save` method.
@@ -30,16 +36,38 @@ def load_engine(filename: str) -> "FaceEngine":
 
     :return: restored engine object
     :rtype: :class:`.FaceEngine`
+
+    :raises RuntimeError: on legacy (pre-3.0) pickle files
     """
 
     with open(filename, "rb") as file:
-        engine = pickle.load(file)
+        content = file.read()
+
+    # pre-3.0 engines were pickled (protocol >= 2 starts with b'\x80')
+    if content[:1] == b"\x80":
+        raise RuntimeError(_LEGACY_PICKLE_ERROR % filename)
+    try:
+        data = json.loads(content)
+    except (ValueError, UnicodeDecodeError):
+        raise RuntimeError(
+            "file %s could not be deserialized as FaceEngine state" % filename
+        )
 
     # foolproof
-    if not isinstance(engine, FaceEngine):
+    if not isinstance(data, dict) or data.get("format") != "face-engine":
         raise TypeError(
-            "file %s could not be deserialized as " "FaceEngine instance" % filename
+            "file %s could not be deserialized as FaceEngine state" % filename
         )
+
+    engine = FaceEngine(
+        detector=data.get("detector"),
+        embedder=data.get("embedder"),
+        estimator=data.get("estimator"),
+    )
+    engine.n_classes = data.get("n_classes", 0)
+    engine.n_samples = data.get("n_samples", 0)
+    for key, value in data.get("extra", {}).items():
+        setattr(engine, key, value)
 
     # load estimator model's state only if there is something to restore
     if engine.n_samples > 0:
@@ -70,34 +98,6 @@ class FaceEngine:
         # keep last fitted number of classes and samples
         self.n_classes = 0
         self.n_samples = 0
-
-    def __getstate__(self) -> Dict[str, Any]:
-        # copy the engine object's state from self.__dict__
-        # using copy to avoid modifying the original state
-        state = self.__dict__.copy()
-
-        # remove the model objects (unpicklable entries)
-        del state["_detector"]
-        del state["_embedder"]
-        del state["_estimator"]
-
-        # persist the model objects names
-        state["detector"] = self.detector
-        state["embedder"] = self.embedder
-        state["estimator"] = self.estimator
-
-        # returns engine instance's lightweight state dictionary
-        # contents of the which will be used by pickle in .save() method
-        return state
-
-    def __setstate__(self, state: Dict[str, Any]) -> None:
-        # initialize engine models by their setter methods
-        self.detector = state.pop("detector")
-        self.embedder = state.pop("embedder")
-        self.estimator = state.pop("estimator")
-
-        # update rest attributes
-        self.__dict__.update(state)
 
     @property
     def detector(self) -> str:
@@ -182,19 +182,40 @@ class FaceEngine:
         self._estimator = Estimator()
 
     def save(self, filename: str) -> None:
-        """Save engine object state to the file.
+        """Save engine object state to the file as JSON.
 
         Persisting the object state as lightweight engine instance which
         contains only model name strings instead of model objects itself.
         Upon loading model objects will have to be re-initialized.
+
+        Any extra instance attributes must be JSON-serializable.
         """
 
         # save estimator model's state only if there is something to persist
         if self.n_samples > 0:
             self._estimator.save(os.path.dirname(filename))
 
-        with open(filename, "wb") as file:
-            pickle.dump(self, file)
+        # everything beyond the model trio and counters goes to "extra"
+        extra = {
+            key: value
+            for key, value in self.__dict__.items()
+            if key
+            not in ("_detector", "_embedder", "_estimator", "n_classes", "n_samples")
+        }
+        data = {
+            "format": "face-engine",
+            "format_version": 1,
+            "library_version": __version__,
+            "detector": self.detector,
+            "embedder": self.embedder,
+            "estimator": self.estimator,
+            "n_classes": self.n_classes,
+            "n_samples": self.n_samples,
+        }
+        if extra:
+            data["extra"] = extra
+        with open(filename, "w", encoding="utf-8") as file:
+            json.dump(data, file, indent=2)
 
     def _fit(
         self, embeddings: np.ndarray, class_names: List[Any], **kwargs: Any

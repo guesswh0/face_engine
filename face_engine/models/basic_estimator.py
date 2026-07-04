@@ -1,5 +1,5 @@
+import json
 import os
-import pickle
 
 import numpy as np
 
@@ -11,8 +11,8 @@ class BasicEstimator(Estimator, name="basic"):
     """Basic estimator model makes predictions by linear comparing each source
     embedding vector with each fitted embedding vectors.
 
-    Model is using python pickle module to persist estimator state. Default
-    file name is ``'basic.estimator.p'``.
+    Model state is persisted as ``'basic.estimator.npz'`` (embeddings) and
+    ``'basic.estimator.json'`` (class names) files.
     """
 
     def __init__(self):
@@ -38,11 +38,31 @@ class BasicEstimator(Estimator, name="basic"):
         return scores, class_names
 
     def save(self, dirname):
-        name = "%s.estimator.%s" % (self.name, "p")
-        with open(os.path.join(dirname, name), "wb") as file:
-            pickle.dump(self.__dict__, file)
+        np.savez(
+            os.path.join(dirname, "%s.estimator.npz" % self.name),
+            embeddings=np.asarray(self.embeddings),
+        )
+        with open(
+            os.path.join(dirname, "%s.estimator.json" % self.name),
+            "w",
+            encoding="utf-8",
+        ) as file:
+            json.dump({"class_names": list(self.class_names)}, file)
 
     def load(self, dirname):
-        name = "%s.estimator.%s" % (self.name, "p")
-        with open(os.path.join(dirname, name), "rb") as file:
-            self.__dict__.update(pickle.load(file))
+        npz = os.path.join(dirname, "%s.estimator.npz" % self.name)
+        if not os.path.isfile(npz):
+            legacy = os.path.join(dirname, "%s.estimator.p" % self.name)
+            if os.path.isfile(legacy):
+                raise RuntimeError(
+                    "%s appears to be a legacy pickle produced by "
+                    "face-engine < 3.0. Pickle persistence was removed in "
+                    "3.0.0 for security. Re-fit the engine, then save() "
+                    "again." % legacy
+                )
+        with np.load(npz, allow_pickle=False) as data:
+            self.embeddings = data["embeddings"]
+        with open(
+            os.path.join(dirname, "%s.estimator.json" % self.name), encoding="utf-8"
+        ) as file:
+            self.class_names = json.load(file)["class_names"]
