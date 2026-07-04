@@ -1,4 +1,5 @@
 import os
+import warnings
 
 import numpy as np
 import onnxruntime
@@ -118,10 +119,13 @@ class ArcFaceEmbedder(Embedder, name="arcface", dim=512):
         kpss = kwargs.get("kpss")
 
         embeddings = []
-        for bb, kps in zip(bounding_boxes, kpss):
-            aimg = face_align.norm_crop(image, kps)
-            embedding = self._embedder.get_feat(aimg).flatten()
-            embeddings.append(embedding / np.linalg.norm(embedding))
+        with warnings.catch_warnings():
+            # insightface face_align uses a deprecated scikit-image api,
+            warnings.simplefilter("ignore", FutureWarning)
+            for bb, kps in zip(bounding_boxes, kpss):
+                aimg = face_align.norm_crop(image, kps)
+                embedding = self._embedder.get_feat(aimg).flatten()
+                embeddings.append(embedding / np.linalg.norm(embedding))
         return np.array(embeddings)
 
 
