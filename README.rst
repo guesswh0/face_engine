@@ -49,8 +49,14 @@ name                    role       model pack   notes
 
 .. note::
    The ``[insightface]`` extra installs the CPU build of onnxruntime.
-   For NVIDIA GPU inference install ``onnxruntime-gpu`` instead — the
-   models use the CUDA execution provider automatically when available.
+   For NVIDIA GPU inference replace it with the GPU build — both
+   packages provide the same ``onnxruntime`` module, so the CPU build
+   must be removed first::
+
+       pip uninstall onnxruntime && pip install onnxruntime-gpu
+
+   The models use the CUDA execution provider automatically when
+   available.
 
 Legacy `dlib python api`_ models (``hog``, ``mmod`` detectors and ``resnet``
 embedder with dlib pre-trained model `files`_) are kept as an optional
