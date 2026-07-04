@@ -5,3 +5,7 @@ dist/
 build/
 .pytest_cache/
 .ruff_cache/
+
+# local AI assistant notes
+CLAUDE.md
+.claude/
