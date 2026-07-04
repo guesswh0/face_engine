@@ -1,0 +1,39 @@
+name: release
+
+# publishes to pypi (trusted publishing, no token) and creates the
+# github release when a v* tag is pushed; release body comes from
+# .github/RELEASE_NOTES.md - update it before tagging
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/face-engine/
+    permissions:
+      id-token: write # pypi trusted publishing
+      contents: write # github release creation
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build distributions
+        run: |
+          python3 -m pip install --user build
+          python3 -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "face-engine ${GITHUB_REF_NAME#v}" \
+            --notes-file .github/RELEASE_NOTES.md \
+            dist/*
