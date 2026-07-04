@@ -16,16 +16,20 @@ class Model:
 
     .. note::
         * implementing model classes must have ``name`` class descriptor
+        * extra registry keys may be added with ``aliases`` class keyword;
+          the ``name`` descriptor keeps the canonical name
 
     """
 
     name = None
     """short model name of implementing class"""
 
-    def __init_subclass__(cls, name=None, **kwargs):
+    def __init_subclass__(cls, name=None, aliases=(), **kwargs):
         if name:
             cls.name = name
             _models[name] = cls
+            for alias in aliases:
+                _models[alias] = cls
         elif cls.__name__ in __all__:
             cls.name = "abstract_" + cls.__name__.lower()
             _models[cls.name] = cls

@@ -24,6 +24,9 @@ KNOWN_HASHES = {
     "mmod_human_face_detector.dat.bz2": "db9e9e40f092c118d5eb3e643935b216838170793559515541c56a2b50d9fc84",  # noqa: E501
     "dlib_face_recognition_resnet_model_v1.dat.bz2": "abb1f61041e434465855ce81c2bd546e830d28bcbed8d27ffbe5bb408b11553a",  # noqa: E501
     "shape_predictor_5_face_landmarks.dat.bz2": "6e787bbebf5c9efdb793f6cd1f023230c4413306605f24f299f12869f95aa472",  # noqa: E501
+    # insightface model packs (v0.7 github release assets)
+    "buffalo_l.zip": "80ffe37d8a5940d59a7384c201a2a38d4741f2f3c51eef46ebb28218a7b0ca2f",  # noqa: E501
+    "antelopev2.zip": "8e182f14fc6e80b3bfa375b33eb6cff7ee05d8ef7633e738d1c89021dcf0c5c5",  # noqa: E501
     # test assets (https://github.com/guesswh0/storage)
     "test.zip": "7e967899f1a106908798d750f81d3a966422300b479757b600eaf3ea4d96723b",
     "train.zip": "d61d21d6b0198df9b2f045de784924984177042a595a1a5fd42c3771b2b24b15",
