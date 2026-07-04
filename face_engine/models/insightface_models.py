@@ -20,7 +20,7 @@ class RetinaFaceDetector(Detector, name="retina_face"):
         self._detector = model_zoo.get_model(model)
         self._detector.prepare(ctx_id=0, input_size=(640, 640), det_thresh=0.5)
 
-    def detect(self, image, limit=None):
+    def detect(self, image):
         bbs, kpss = self._detector.detect(image)
         n_det = bbs.shape[0]
         if n_det < 1:

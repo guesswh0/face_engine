@@ -60,7 +60,7 @@ def imread(uri, mode=None):
     image = Image.open(uri)
     if mode:
         image = image.convert(mode)
-    return np.uint8(image)
+    return np.asarray(image, dtype=np.uint8)
 
 
 def import_module(filepath):

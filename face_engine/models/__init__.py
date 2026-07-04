@@ -22,9 +22,6 @@ class Model:
     name = None
     """short model name of implementing class"""
 
-    def __set_name__(self, owner, name):
-        print(self.name, owner, name)
-
     def __init_subclass__(cls, name=None, **kwargs):
         if name:
             cls.name = name
