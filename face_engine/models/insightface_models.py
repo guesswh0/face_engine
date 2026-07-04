@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import onnxruntime
 from insightface.model_zoo import model_zoo
 from insightface.utils import face_align
 
@@ -13,6 +14,18 @@ from face_engine.models import Detector, Embedder
 # (storage.insightface.ai is no longer available);
 # pre-trained weights are for non-commercial research purposes only
 _PACK_URL = "https://github.com/deepinsight/insightface/releases/download/v0.7/{}.zip"
+
+
+def _providers():
+    """Cuda when available, cpu otherwise.
+
+    Insightface requests CUDAExecutionProvider unconditionally, making
+    onnxruntime warn on every non-CUDA machine.
+    """
+    available = onnxruntime.get_available_providers()
+    return [
+        p for p in ("CUDAExecutionProvider", "CPUExecutionProvider") if p in available
+    ]
 
 
 def _fetch_pack(pack, filename):
@@ -48,7 +61,7 @@ class SCRFDDetector(Detector, name="scrfd", aliases=("retina_face",)):
 
     def __init__(self):
         model = _fetch_pack(self.pack, self.file)
-        self._detector = model_zoo.get_model(model)
+        self._detector = model_zoo.get_model(model, providers=_providers())
         self._detector.prepare(ctx_id=0, input_size=(640, 640), det_thresh=0.5)
 
     def detect(self, image):
@@ -95,7 +108,7 @@ class ArcFaceEmbedder(Embedder, name="arcface", dim=512):
 
     def __init__(self):
         model = _fetch_pack(self.pack, self.file)
-        self._embedder = model_zoo.get_model(model)
+        self._embedder = model_zoo.get_model(model, providers=_providers())
         self._embedder.prepare(ctx_id=0)
 
     def compute_embeddings(self, image, bounding_boxes, **kwargs):
