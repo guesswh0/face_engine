@@ -16,6 +16,18 @@ To install the default insightface backend models use:
 
     $ pip install face-engine[insightface]
 
+.. note::
+   **GPU usage**: the ``[insightface]`` extra installs the CPU build of
+   onnxruntime. To run the insightface models on an NVIDIA GPU replace it
+   with ``pip install onnxruntime-gpu`` (requires CUDA/cuDNN); no code
+   changes are needed — the models pick the CUDA execution provider
+   automatically when it is available. On CPU-only machines onnxruntime
+   logs a harmless ``CUDAExecutionProvider is not in available provider
+   names`` warning and falls back to CPU. See the `onnxruntime execution
+   providers`_ documentation for details.
+
+.. _onnxruntime execution providers: https://onnxruntime.ai/docs/execution-providers/
+
 To install the legacy dlib backend either run ``pip install dlib``
 (compiles from source, requires cmake) or install prebuilt wheels with:
 

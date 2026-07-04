@@ -47,6 +47,11 @@ name                    role       model pack   notes
                                                 embedder, 512-d
 ======================= ========== ============ ===========================
 
+.. note::
+   The ``[insightface]`` extra installs the CPU build of onnxruntime.
+   For NVIDIA GPU inference install ``onnxruntime-gpu`` instead — the
+   models use the CUDA execution provider automatically when available.
+
 Legacy `dlib python api`_ models (``hog``, ``mmod`` detectors and ``resnet``
 embedder with dlib pre-trained model `files`_) are kept as an optional
 fallback backend used when insightface is not installed.
