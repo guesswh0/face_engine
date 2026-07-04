@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,49 +7,46 @@ name = "face-engine"
 dynamic = ["version"]
 description = "Face Recognition Engine"
 readme = "README.rst"
-requires-python = ">=3.8"
-license = {text = "Apache License, Version 2.0"}
+requires-python = ">=3.11"
+license = "Apache-2.0"
 authors = [
   {name = "Daniyar Kussainov", email = "ohw0sseug@gmail.com"}
 ]
 classifiers = [
-    "License :: OSI Approved :: Apache Software License",
     "Natural Language :: English",
     "Intended Audience :: Developers",
     "Intended Audience :: Education",
     "Topic :: Scientific/Engineering :: Image Recognition",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3 :: Only",
 ]
 dependencies = [
-    "numpy>=1.18.0,<3.0",
-    "pillow>=8.0.0",
-    "tqdm>=4.44.0,<5.0",
-    "platformdirs>=3.0.0",
+    "numpy>=1.26,<3",
+    "pillow>=12.2",
+    "tqdm>=4.66.3,<5",
+    "platformdirs>=4",
 ]
 
 [project.optional-dependencies]
+insightface = [
+    "insightface>=1.0.1",
+    "onnxruntime>=1.19",
+]
+dlib = [
+    "dlib>=19.24",
+]
 dev = [
     "pytest",
     "ruff",
     "black",
-    "dlib",
-    "opencv-python-headless",
     "sphinx",
-    "sphinx-rtd-theme"
-]
-insightface = [
-    "insightface",
-    "onnxruntime"
-]
-dlib = [
-    "dlib"
+    "sphinx-rtd-theme",
+    "face-engine[insightface]",
 ]
 
 [project.urls]
@@ -60,3 +57,11 @@ exclude = ["tests", "extra"]
 
 [tool.setuptools.dynamic]
 version = {attr = "face_engine.__version__"}
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint.per-file-ignores]
+# sphinx conf conventionally imports after sys.path setup
+"docs/source/conf.py" = ["E402"]

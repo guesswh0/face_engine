@@ -38,9 +38,7 @@ class TestFaceEnginePersistence(TestCase):
         self.assertEqual(data["format"], "face-engine")
         self.assertEqual(data["detector"], self.test_engine.detector)
 
-    @unittest.skipUnless(
-        dlib or insightface, "no face recognition backend installed"
-    )
+    @unittest.skipUnless(dlib or insightface, "no face recognition backend installed")
     def test_save_with_fitted_engine(self):
         self.test_engine.fit([self.bubbles1, self.bubbles2], [0, 0])
         self.test_engine.save(self.filename)
@@ -56,9 +54,7 @@ class TestFaceEnginePersistence(TestCase):
         self.assertEqual(engine.embedder, self.test_engine.embedder)
         self.assertEqual(engine.estimator, self.test_engine.estimator)
 
-    @unittest.skipUnless(
-        dlib or insightface, "no face recognition backend installed"
-    )
+    @unittest.skipUnless(dlib or insightface, "no face recognition backend installed")
     def test_load_engine_with_estimator_state(self):
         self.test_engine.fit([self.bubbles1, self.bubbles2], [0, 0])
         self.test_engine.save(self.filename)
@@ -67,9 +63,7 @@ class TestFaceEnginePersistence(TestCase):
         self.assertEqual(engine.n_classes, 1)
         self.assertEqual(engine.n_samples, 2)
 
-    @unittest.skipUnless(
-        dlib or insightface, "no face recognition backend installed"
-    )
+    @unittest.skipUnless(dlib or insightface, "no face recognition backend installed")
     def test_round_trip_predictions_identical(self):
         self.test_engine.fit([self.bubbles1, self.bubbles2], [1, 2])
         bbs, class_names = self.test_engine.make_prediction(self.bubbles2)

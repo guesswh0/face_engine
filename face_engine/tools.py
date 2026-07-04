@@ -8,6 +8,7 @@ from urllib.request import urlopen, Request
 import numpy as np
 from PIL import Image
 
+
 @lru_cache(maxsize=128)
 def _download_url(url):
     """Downloads the content of a URL in a thread-safe and cached manner."""
