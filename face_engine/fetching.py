@@ -27,6 +27,11 @@ KNOWN_HASHES = {
     # insightface model packs (v0.7 github release assets)
     "buffalo_l.zip": "80ffe37d8a5940d59a7384c201a2a38d4741f2f3c51eef46ebb28218a7b0ca2f",  # noqa: E501
     "antelopev2.zip": "8e182f14fc6e80b3bfa375b33eb6cff7ee05d8ef7633e738d1c89021dcf0c5c5",  # noqa: E501
+    # minifasnet anti-spoofing models (face-engine release assets,
+    # exported from minivision-ai/Silent-Face-Anti-Spoofing checkpoints
+    # by extra/export_minifasnet.py)
+    "2.7_80x80_MiniFASNetV2.onnx": "3052e9d1d97270f5d9f197bed4f039cae23b8c14d6282e879ca3a63073792a97",  # noqa: E501
+    "4_0_0_80x80_MiniFASNetV1SE.onnx": "2348be428f787149bf28dca49f802bd7ab9280ff3333475f76df1aafd2dada4f",  # noqa: E501
     # test assets (https://github.com/guesswh0/storage)
     "test.zip": "7e967899f1a106908798d750f81d3a966422300b479757b600eaf3ea4d96723b",
     "train.zip": "d61d21d6b0198df9b2f045de784924984177042a595a1a5fd42c3771b2b24b15",

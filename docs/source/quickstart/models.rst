@@ -1,9 +1,10 @@
 Models
 ======
 
-FaceEngine is built on top of three model interfaces
-:class:`~face_engine.models.Detector`, :class:`~face_engine.models.Embedder`
-and :class:`~face_engine.models.Estimator`, and leans on user provided
+FaceEngine is built on top of four model interfaces
+:class:`~face_engine.models.Detector`, :class:`~face_engine.models.Embedder`,
+:class:`~face_engine.models.Estimator` and
+:class:`~face_engine.models.Antispoof`, and leans on user provided
 implementations of these models.
 
 
@@ -35,6 +36,22 @@ name                    role       model pack   notes
 If insightface is not installed, the engine falls back to the legacy
 :ref:`dlib models <dlib-models>` (``hog`` detector, ``resnet`` embedder).
 
+Face anti-spoofing is opt-in via the ``minifasnet``
+:ref:`antispoof model <antispoof-models>` (requires ``onnxruntime``,
+already present with the ``[insightface]`` extra):
+
+.. code-block:: python
+
+   engine = FaceEngine(antispoof="minifasnet")
+   scores = engine.check_liveness('selfie.jpg')
+
+.. note::
+   The ``minifasnet`` weights are Apache-2.0 (usable commercially) — ONNX
+   exports of the released `Silent-Face-Anti-Spoofing`_ checkpoints,
+   reproducible with ``extra/export_minifasnet.py``. The model is effective
+   against printed photos and basic screen replays, but is not a certified
+   (ISO/IEC 30107-3) liveness solution.
+
 .. note::
    FaceEngine installation is not installing dlib by default.
    To install it, either run ``pip install dlib`` (requires cmake),
@@ -51,6 +68,7 @@ At the moment there is:
     * :class:`~face_engine.models.dlib_models.HOGDetector`
     * :class:`~face_engine.models.dlib_models.MMODDetector`
     * :class:`~face_engine.models.dlib_models.ResNetEmbedder`
+    * :class:`~face_engine.models.minifasnet.MiniFASNetAntispoof`
     * :class:`~face_engine.models.basic_estimator.BasicEstimator`
 
 
@@ -88,6 +106,7 @@ or use corresponding setter method with model ``name``:
 
 
 .. _insightface: https://github.com/deepinsight/insightface
+.. _Silent-Face-Anti-Spoofing: https://github.com/minivision-ai/Silent-Face-Anti-Spoofing
 .. _dlib python api: http://dlib.net/python/index.html
 .. _files: https://github.com/davisking/dlib-models
 .. _build instructions: http://dlib.net/compile.html

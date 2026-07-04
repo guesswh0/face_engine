@@ -15,6 +15,11 @@ try:
 except ImportError:
     insightface = None
 
+try:
+    import onnxruntime
+except ImportError:
+    onnxruntime = None
+
 # fetch datasets
 base = "https://github.com/guesswh0/storage/raw/master/"
 extract_dir = os.path.join(RESOURCES, "datasets")

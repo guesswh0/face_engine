@@ -2,7 +2,7 @@
 FaceEngine models API.
 """
 
-__all__ = ["Detector", "Embedder", "Estimator", "_models"]
+__all__ = ["Detector", "Embedder", "Estimator", "Antispoof", "_models"]
 
 from face_engine.tools import import_package
 
@@ -82,6 +82,29 @@ class Embedder(Model):
         :keyword kwargs: model dependent
 
         :returns: array of embedding vectors with shape (n_faces, embedding_dim)
+        :rtype: numpy.ndarray
+        """
+
+        raise NotImplementedError()
+
+
+class Antispoof(Model):
+    """Face anti-spoofing (presentation attack detection) model base class.
+
+    Estimates whether the faces in the image belong to live persons or
+    to presentation attacks (printed photos, screen replays, masks).
+    """
+
+    def predict(self, image, bounding_boxes):
+        """Predict live-face probabilities for given bounding boxes.
+
+        :param image: RGB image with shape (rows, cols, 3)
+        :type image: numpy.ndarray
+
+        :param bounding_boxes: bounding boxes with shape (n_faces, 4)
+        :type bounding_boxes: numpy.ndarray
+
+        :returns: live-face probabilities in [0, 1] with shape (n_faces,)
         :rtype: numpy.ndarray
         """
 

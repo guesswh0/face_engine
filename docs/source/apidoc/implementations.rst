@@ -39,6 +39,15 @@ Dlib models
 
    .. autoattribute:: name
 
+.. _antispoof-models:
+
+Anti-spoofing models
+--------------------
+
+.. autoclass:: face_engine.models.minifasnet.MiniFASNetAntispoof
+
+   .. autoattribute:: name
+
 Basic estimator
 ---------------
 

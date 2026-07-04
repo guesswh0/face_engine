@@ -5,9 +5,9 @@ import numpy as np
 
 from face_engine import FaceEngine
 from face_engine.exceptions import FaceNotFoundError, TrainError
-from face_engine.models import Detector, Embedder, Estimator
+from face_engine.models import Antispoof, Detector, Embedder, Estimator
 from face_engine.tools import imread
-from tests import TestCase, dlib, insightface
+from tests import TestCase, dlib, insightface, onnxruntime
 
 
 class TestFaceEngine(TestCase):
@@ -140,6 +140,44 @@ class TestFaceEngine(TestCase):
         self.assertIsInstance(self.test_engine.detector, str)
         self.assertIsInstance(self.test_engine.embedder, str)
         self.assertIsInstance(self.test_engine.estimator, str)
+        self.assertIsInstance(self.test_engine.antispoof, str)
+
+    def test_init_default_antispoof_is_abstract(self):
+        # antispoof is opt-in regardless of installed backends
+        self.assertEqual(self.test_engine.antispoof, "abstract_antispoof")
+
+    def test_setter_antispoof_with_not_existing_model(self):
+        logging.disable(logging.WARNING)
+        self.test_engine.antispoof = "my_antispoof"
+        self.assertEqual(self.test_engine.antispoof, "abstract_antispoof")
+
+    def test_check_liveness_with_abstract_raises(self):
+        with self.assertRaises(NotImplementedError):
+            self.test_engine.check_liveness(
+                imread(self.bubbles1), np.array([[278, 132, 618, 471]])
+            )
+
+    @unittest.skipUnless(onnxruntime, "onnxruntime package is not installed")
+    def test_setter_antispoof_minifasnet(self):
+        self.test_engine.antispoof = "minifasnet"
+        self.assertEqual(self.test_engine.antispoof, "minifasnet")
+        self.assertIsInstance(self.test_engine._antispoof, Antispoof)
+
+    @unittest.skipUnless(onnxruntime, "onnxruntime package is not installed")
+    def test_check_liveness_with_bounding_boxes(self):
+        self.test_engine.antispoof = "minifasnet"
+        scores = self.test_engine.check_liveness(
+            imread(self.bubbles1), np.array([[278, 132, 618, 471]])
+        )
+        self.assertEqual(scores.shape, (1,))
+        self.assertTrue(0.0 <= scores[0] <= 1.0)
+
+    @unittest.skipUnless(insightface, "insightface package is not installed")
+    def test_check_liveness_finds_faces(self):
+        engine = FaceEngine(antispoof="minifasnet")
+        scores = engine.check_liveness(self.family)
+        self.assertGreater(len(scores), 1)
+        self.assertTrue(all(0.0 <= s <= 1.0 for s in scores))
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_fit_bubbles(self):

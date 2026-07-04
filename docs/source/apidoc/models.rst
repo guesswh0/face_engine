@@ -20,6 +20,13 @@ Embedder
    :undoc-members:
    :members:
 
+Antispoof
+---------
+
+.. autoclass:: face_engine.models.Antispoof
+   :undoc-members:
+   :members:
+
 Estimator
 ---------
 

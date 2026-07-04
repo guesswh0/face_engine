@@ -53,6 +53,18 @@ class TestFaceEnginePersistence(TestCase):
         self.assertEqual(engine.detector, self.test_engine.detector)
         self.assertEqual(engine.embedder, self.test_engine.embedder)
         self.assertEqual(engine.estimator, self.test_engine.estimator)
+        self.assertEqual(engine.antispoof, self.test_engine.antispoof)
+
+    def test_load_engine_pre31_file_without_antispoof(self):
+        self.test_engine.save(self.filename)
+        with open(self.filename) as file:
+            data = json.load(file)
+        # files saved by face-engine 3.0 have no antispoof key
+        del data["antispoof"]
+        with open(self.filename, "w") as file:
+            json.dump(data, file)
+        engine = load_engine(self.filename)
+        self.assertEqual(engine.antispoof, "abstract_antispoof")
 
     @unittest.skipUnless(dlib or insightface, "no face recognition backend installed")
     def test_load_engine_with_estimator_state(self):

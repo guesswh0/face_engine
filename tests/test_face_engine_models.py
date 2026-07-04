@@ -5,10 +5,10 @@ import numpy as np
 
 from extra.dataset import load_dataset
 from face_engine.exceptions import FaceNotFoundError
-from face_engine.models import Detector, Embedder, Estimator
+from face_engine.models import Detector, Embedder, Estimator, _models
 from face_engine.models.basic_estimator import BasicEstimator
 from face_engine.tools import imread
-from tests import TestCase, dlib, insightface
+from tests import TestCase, dlib, insightface, onnxruntime
 
 if dlib:
     from face_engine.models.dlib_models import HOGDetector, MMODDetector, ResNetEmbedder
@@ -158,6 +158,42 @@ class TestArcFaceAntelopeV2Embedder(TestInsightFaceEmbedder):
         super().setUp()
         self.detector = SCRFDAntelopeV2Detector()
         self.embedder = ArcFaceAntelopeV2Embedder()
+
+
+@unittest.skipUnless(onnxruntime, "onnxruntime package is not installed")
+class TestMiniFASNetAntispoof(TestCase):
+
+    def setUp(self):
+        from face_engine.models.minifasnet import MiniFASNetAntispoof
+
+        self.antispoof = MiniFASNetAntispoof()
+        self.image = imread(self.bubbles1)
+        self.bbs = np.array([[278, 132, 618, 471]])
+
+    def test_registered_under_canonical_name(self):
+        self.assertIs(_models["minifasnet"], type(self.antispoof))
+
+    def test_predict_return_data_shape_and_range(self):
+        scores = self.antispoof.predict(self.image, self.bbs)
+        self.assertIsInstance(scores, np.ndarray)
+        self.assertEqual(scores.shape, (1,))
+        self.assertTrue(0.0 <= scores[0] <= 1.0)
+
+    def test_predict_live_photo_scores_high(self):
+        scores = self.antispoof.predict(self.image, self.bbs)
+        self.assertGreater(scores[0], 0.5)
+
+    def test_predict_multiple_faces(self):
+        image = imread(self.family)
+        bbs = np.array(
+            [[100, 100, 200, 220], [300, 120, 400, 240], [500, 110, 600, 230]]
+        )
+        scores = self.antispoof.predict(image, bbs)
+        self.assertEqual(scores.shape, (3,))
+
+    def test_predict_empty_bounding_boxes(self):
+        scores = self.antispoof.predict(self.image, np.empty((0, 4)))
+        self.assertEqual(scores.shape, (0,))
 
 
 class TestEstimator(TestCase):

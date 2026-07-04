@@ -17,6 +17,8 @@ from .tools import imread
 _DETECTOR_DEFAULTS = ("scrfd", "hog")
 _EMBEDDER_DEFAULTS = ("arcface", "resnet")
 _ESTIMATOR_DEFAULTS = ("basic",)
+# antispoof is opt-in: the default is the abstract no-op model
+_ANTISPOOF_DEFAULTS = ()
 
 
 def _resolve(name: Optional[str], defaults: Tuple[str, ...], kind: str) -> str:
@@ -84,6 +86,8 @@ def load_engine(filename: str) -> "FaceEngine":
         detector=data.get("detector"),
         embedder=data.get("embedder"),
         estimator=data.get("estimator"),
+        # absent in files saved by face-engine < 3.1
+        antispoof=data.get("antispoof"),
     )
     engine.n_classes = data.get("n_classes", 0)
     engine.n_samples = data.get("n_samples", 0)
@@ -107,6 +111,7 @@ class FaceEngine:
         * detector (str) -- face detector model to use
         * embedder (str) -- face embedder model to use
         * estimator (str) -- face estimator model to use
+        * antispoof (str) -- face anti-spoofing model to use (opt-in)
     """
 
     def __init__(self, **kwargs: Any) -> None:
@@ -116,6 +121,8 @@ class FaceEngine:
         self.detector = kwargs.get("detector")
         self.embedder = kwargs.get("embedder")
         self.estimator = kwargs.get("estimator")
+        # opt-in anti-spoofing model, abstract no-op by default
+        self.antispoof = kwargs.get("antispoof")
         # keep last fitted number of classes and samples
         self.n_classes = 0
         self.n_samples = 0
@@ -191,6 +198,28 @@ class FaceEngine:
         Estimator = _models.get(_resolve(name, _ESTIMATOR_DEFAULTS, "estimator"))
         self._estimator = Estimator()
 
+    @property
+    def antispoof(self) -> str:
+        """
+        :return: antispoof model name
+        :rtype: str
+        """
+
+        return self._antispoof.name
+
+    @antispoof.setter
+    def antispoof(self, name: Optional[str]) -> None:
+        """Face anti-spoofing model to use:
+            - 'minifasnet': MiniFASNet passive anti-spoofing ensemble
+            - by default the abstract no-op model is used
+
+        :param name: antispoof model name
+        :type name: str
+        """
+
+        Antispoof = _models.get(_resolve(name, _ANTISPOOF_DEFAULTS, "antispoof"))
+        self._antispoof = Antispoof()
+
     def save(self, filename: str) -> None:
         """Save engine object state to the file as JSON.
 
@@ -205,12 +234,19 @@ class FaceEngine:
         if self.n_samples > 0:
             self._estimator.save(os.path.dirname(filename))
 
-        # everything beyond the model trio and counters goes to "extra"
+        # everything beyond the models and counters goes to "extra"
         extra = {
             key: value
             for key, value in self.__dict__.items()
             if key
-            not in ("_detector", "_embedder", "_estimator", "n_classes", "n_samples")
+            not in (
+                "_detector",
+                "_embedder",
+                "_estimator",
+                "_antispoof",
+                "n_classes",
+                "n_samples",
+            )
         }
         data = {
             "format": "face-engine",
@@ -219,6 +255,7 @@ class FaceEngine:
             "detector": self.detector,
             "embedder": self.embedder,
             "estimator": self.estimator,
+            "antispoof": self.antispoof,
             "n_classes": self.n_classes,
             "n_samples": self.n_samples,
         }
@@ -404,6 +441,40 @@ class FaceEngine:
         if normalize:
             bbs = bbs / ([width, height] * 2)
         return bbs, extra
+
+    def check_liveness(
+        self,
+        image: Union[str, bytes, os.PathLike, np.ndarray],
+        bounding_boxes: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        """Predict live-face probabilities for faces in the image.
+
+        Antispoof's :meth:`~face_engine.models.Antispoof.predict`
+        wrapping method. When ``bounding_boxes`` is not given, faces are
+        located with :meth:`.find_faces` first.
+
+        .. note::
+            The default abstract antispoof model raises
+            ``NotImplementedError`` — set :attr:`antispoof` first
+            (e.g. ``engine.antispoof = "minifasnet"``).
+
+        :param image: RGB image content or image file uri.
+        :type image: Union[str, bytes, file, os.PathLike, numpy.ndarray]
+
+        :param bounding_boxes: face bounding boxes, found when omitted
+        :type bounding_boxes: numpy.ndarray
+
+        :returns: live-face probabilities in [0, 1] with shape (n_faces,)
+        :rtype: numpy.ndarray
+
+        :raises: FaceNotFoundError
+        """
+
+        if not hasattr(image, "shape"):
+            image = imread(image)
+        if bounding_boxes is None:
+            bounding_boxes, _ = self.find_faces(image)
+        return self._antispoof.predict(image, bounding_boxes)
 
     def compute_embeddings(
         self, image: np.ndarray, bounding_boxes: np.ndarray, **kwargs: Any

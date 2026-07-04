@@ -29,23 +29,25 @@ FaceEngine is supported only on Python 3.11 and above.
 Models
 ------
 
-FaceEngine is built on top of three model interfaces ``Detector``, ``Embedder``
-and ``Estimator`` (see `models`_), and leans on user provided implementations
-of these models.
+FaceEngine is built on top of four model interfaces ``Detector``, ``Embedder``,
+``Estimator`` and ``Antispoof`` (see `models`_), and leans on user provided
+implementations of these models.
 
 The default backend is `insightface`_ (the ``[insightface]`` extra), with
 these bundled model implementations:
 
-======================= ========== ============ ===========================
+======================= ========== ============ ==========================
 name                    role       model pack   notes
-======================= ========== ============ ===========================
+======================= ========== ============ ==========================
 ``scrfd``               detector   buffalo_l    default; deprecated alias
                                                 ``retina_face``
 ``arcface``             embedder   buffalo_l    default, 512-d
 ``scrfd_antelopev2``    detector   antelopev2   opt-in
 ``arcface_antelopev2``  embedder   antelopev2   strongest insightface
                                                 embedder, 512-d
-======================= ========== ============ ===========================
+``minifasnet``          antispoof  --           passive anti-spoofing,
+                                                opt-in
+======================= ========== ============ ==========================
 
 .. note::
    The ``[insightface]`` extra installs the CPU build of onnxruntime.
@@ -72,6 +74,24 @@ To work with your own custom models you have to implement required
 `models`_ and import it. FaceEngine models are used to register all inheriting
 imported subclasses (subclass registration `PEP 487`_).
 
+Face anti-spoofing
+------------------
+
+Since 3.1 the engine has an opt-in liveness (presentation attack detection)
+step powered by the ``Antispoof`` model interface:
+
+.. code-block:: python
+
+    >>> engine = FaceEngine(antispoof="minifasnet")
+    >>> engine.check_liveness('bubbles1.jpg')
+    array([0.971], dtype=float32)
+
+The bundled ``minifasnet`` model is an ensemble of the two released
+`Silent-Face-Anti-Spoofing`_ MiniFASNet models (requires ``onnxruntime``,
+already present with the ``[insightface]`` extra). It is effective against
+printed photos and basic screen replays; it is **not** a certified
+(ISO/IEC 30107-3) liveness solution.
+
 Model weights licensing
 -----------------------
 
@@ -81,6 +101,9 @@ come with their own terms:
 * insightface model packs (``buffalo_l``, ``antelopev2``) are available for
   **non-commercial research purposes only** (see `insightface`_).
 * dlib model files have their own terms, see `dlib-models`_.
+* ``minifasnet`` model weights are **Apache-2.0** (usable commercially) —
+  ONNX exports of the `Silent-Face-Anti-Spoofing`_ checkpoints, reproducible
+  with ``extra/export_minifasnet.py``.
 
 Breaking changes in 3.0
 -----------------------
@@ -100,6 +123,7 @@ For more information read the full `documentation`_.
 
 .. _models: https://github.com/guesswh0/face_engine/blob/master/face_engine/models/__init__.py
 .. _insightface: https://github.com/deepinsight/insightface
+.. _Silent-Face-Anti-Spoofing: https://github.com/minivision-ai/Silent-Face-Anti-Spoofing
 .. _dlib python api: http://dlib.net/python/index.html
 .. _files: https://github.com/davisking/dlib-models
 .. _dlib-models: https://github.com/davisking/dlib-models

@@ -80,7 +80,7 @@ def import_module(filepath):
         spec.loader.exec_module(module)
     except ImportError:
         # skip raising on project [optional] default models
-        if path.stem not in ["dlib_models", "insightface_models"]:
+        if path.stem not in ["dlib_models", "insightface_models", "minifasnet"]:
             raise
 
 
