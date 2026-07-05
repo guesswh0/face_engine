@@ -2,7 +2,6 @@ import os
 import warnings
 
 import numpy as np
-import onnxruntime
 from insightface.model_zoo import model_zoo
 from insightface.utils import face_align
 
@@ -10,23 +9,12 @@ from face_engine import RESOURCES
 from face_engine.exceptions import FaceNotFoundError
 from face_engine.fetching import fetch_file
 from face_engine.models import Detector, Embedder
+from face_engine.models._onnx import _providers
 
 # model packs from the insightface v0.7 release assets
 # (storage.insightface.ai is no longer available);
 # pre-trained weights are for non-commercial research purposes only
 _PACK_URL = "https://github.com/deepinsight/insightface/releases/download/v0.7/{}.zip"
-
-
-def _providers():
-    """Cuda when available, cpu otherwise.
-
-    Insightface requests CUDAExecutionProvider unconditionally, making
-    onnxruntime warn on every non-CUDA machine.
-    """
-    available = onnxruntime.get_available_providers()
-    return [
-        p for p in ("CUDAExecutionProvider", "CPUExecutionProvider") if p in available
-    ]
 
 
 def _fetch_pack(pack, filename):

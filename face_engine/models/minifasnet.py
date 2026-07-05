@@ -6,19 +6,10 @@ import onnxruntime
 from face_engine import RESOURCES
 from face_engine.fetching import fetch_file
 from face_engine.models import Antispoof
+from face_engine.models._onnx import _providers
 
-# onnx exports of the released minivision-ai/Silent-Face-Anti-Spoofing
-# checkpoints (Apache-2.0), reproducible with extra/export_minifasnet.py;
-# hosted as face-engine github release assets
+# apache-2.0 onnx exports, see extra/export_minifasnet.py
 _ASSET_URL = "https://github.com/guesswh0/face_engine/releases/download/v3.0.0/{}"
-
-
-def _providers():
-    """Cuda when available, cpu otherwise."""
-    available = onnxruntime.get_available_providers()
-    return [
-        p for p in ("CUDAExecutionProvider", "CPUExecutionProvider") if p in available
-    ]
 
 
 def _softmax(logits):
@@ -37,9 +28,11 @@ def _resize_bilinear(image, out_h, out_w):
     wx = (xs - x0)[None, :, None]
     y0c, y1c = np.clip(y0, 0, in_h - 1), np.clip(y0 + 1, 0, in_h - 1)
     x0c, x1c = np.clip(x0, 0, in_w - 1), np.clip(x0 + 1, 0, in_w - 1)
-    image = image.astype(np.float32)
-    top = image[y0c][:, x0c] * (1 - wx) + image[y0c][:, x1c] * wx
-    bottom = image[y1c][:, x0c] * (1 - wx) + image[y1c][:, x1c] * wx
+    # gather the sampled rows first, cast only the gathered data
+    top_rows = image[y0c].astype(np.float32)
+    bottom_rows = image[y1c].astype(np.float32)
+    top = top_rows[:, x0c] * (1 - wx) + top_rows[:, x1c] * wx
+    bottom = bottom_rows[:, x0c] * (1 - wx) + bottom_rows[:, x1c] * wx
     # official pipeline resizes uint8 images, so round like cv2 does
     return np.rint(top * (1 - wy) + bottom * wy)
 
@@ -85,14 +78,13 @@ class MiniFASNetAntispoof(Antispoof, name="minifasnet"):
 
         # models are trained on BGR images
         image = image[..., ::-1]
-        probabilities = np.zeros((n_faces, 3), dtype=np.float32)
+        live_probs = np.zeros(n_faces, dtype=np.float32)
         for session, scale in self._sessions:
             batch = np.stack([self._patch(image, bb, scale) for bb in bounding_boxes])
             logits = session.run(None, {"input": batch})[0]
-            probabilities += _softmax(logits)
-        probabilities /= len(self._sessions)
-        # softmax classes are (fake, live, fake)
-        return probabilities[:, 1]
+            # softmax classes are (fake, live, fake)
+            live_probs += _softmax(logits)[:, 1]
+        return live_probs / len(self._sessions)
 
     def _patch(self, image, bounding_box, scale):
         """Scale-cropped face patch as float32 CHW tensor in [0, 255].
