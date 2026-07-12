@@ -92,6 +92,22 @@ already present with the ``[insightface]`` extra). It is effective against
 printed photos and basic screen replays; it is **not** a certified
 (ISO/IEC 30107-3) liveness solution.
 
+Face verification
+-----------------
+
+Since 3.2 the engine has a model-agnostic 1:1 verification primitive —
+cosine similarity between two embeddings of the same embedder:
+
+.. code-block:: python
+
+    >>> bbs, extra = engine.find_faces(image, limit=1)
+    >>> source = engine.compute_embeddings(image, bbs, **extra)[0]
+    >>> engine.compare(source, target)
+    0.83
+
+``compare`` returns the raw score in ``[-1, 1]``; accept/reject
+thresholding is left to the caller and should be calibrated per embedder.
+
 Model weights licensing
 -----------------------
 
@@ -104,6 +120,18 @@ come with their own terms:
 * ``minifasnet`` model weights are **Apache-2.0** (usable commercially) —
   ONNX exports of the `Silent-Face-Anti-Spoofing`_ checkpoints, reproducible
   with ``extra/export_minifasnet.py``.
+
+Changes in 3.2
+--------------
+
+* Unknown explicit model names now raise ``ModelNotFoundError`` instead of
+  warning and falling back to the abstract no-op models. This applies to the
+  ``FaceEngine`` constructor, the model property setters, and
+  ``load_engine``. Empty names keep the installed-backend fallback chains.
+* New ``engine.compare(source, target)`` — cosine similarity between two
+  embeddings for 1:1 verification (raw score, no thresholding).
+* ``tools.imread`` now reads raw ``bytes`` image content, as its
+  documentation always claimed.
 
 Breaking changes in 3.0
 -----------------------

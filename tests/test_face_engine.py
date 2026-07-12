@@ -1,10 +1,9 @@
-import logging
 import unittest
 
 import numpy as np
 
 from face_engine import FaceEngine
-from face_engine.exceptions import FaceNotFoundError, TrainError
+from face_engine.exceptions import FaceNotFoundError, ModelNotFoundError, TrainError
 from face_engine.models import Antispoof, Detector, Embedder, Estimator
 from face_engine.tools import imread
 from tests import TestCase, dlib, insightface, onnxruntime
@@ -48,14 +47,13 @@ class TestFaceEngine(TestCase):
         self.assertEqual(self.empty_engine.embedder, "abstract_embedder")
         self.assertEqual(self.empty_engine.estimator, "abstract_estimator")
 
-    def test_explicit_init_with_not_existing_models(self):
-        logging.disable(logging.WARNING)
-        engine = FaceEngine(
-            detector="my_detector", embedder="my_embedder", estimator="my_estimator"
-        )
-        self.assertEqual(engine.detector, "abstract_detector")
-        self.assertEqual(engine.embedder, "abstract_embedder")
-        self.assertEqual(engine.estimator, "abstract_estimator")
+    def test_explicit_init_with_not_existing_models_raises(self):
+        with self.assertRaises(ModelNotFoundError):
+            FaceEngine(detector="my_detector")
+        with self.assertRaises(ModelNotFoundError):
+            FaceEngine(embedder="my_embedder")
+        with self.assertRaises(ModelNotFoundError):
+            FaceEngine(estimator="my_estimator")
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_setters_with_dlib_models(self):
@@ -95,16 +93,19 @@ class TestFaceEngine(TestCase):
         self.assertIsInstance(self.test_engine._estimator, Estimator)
         self.assertEqual(self.test_engine.estimator, "abstract_estimator")
 
-    def test_setters_with_not_existing_models(self):
-        logging.disable(logging.WARNING)
-        self.empty_engine.detector = "my_detector"
-        self.empty_engine.embedder = "my_embedder"
-        self.empty_engine.estimator = "my_estimator"
-        self.assertNotEqual(self.empty_engine.detector, "my_detector")
+    def test_setters_with_not_existing_models_raise(self):
+        with self.assertRaises(ModelNotFoundError) as context:
+            self.empty_engine.detector = "my_detector"
+        # the message names the model and hints at the plugin import
+        self.assertIn("my_detector", str(context.exception))
+        self.assertIn("imported", str(context.exception))
+        with self.assertRaises(ModelNotFoundError):
+            self.empty_engine.embedder = "my_embedder"
+        with self.assertRaises(ModelNotFoundError):
+            self.empty_engine.estimator = "my_estimator"
+        # the failed assignments left the previous models in place
         self.assertEqual(self.empty_engine.detector, "abstract_detector")
-        self.assertNotEqual(self.empty_engine.embedder, "my_embedder")
         self.assertEqual(self.empty_engine.embedder, "abstract_embedder")
-        self.assertNotEqual(self.empty_engine.estimator, "my_estimator")
         self.assertEqual(self.empty_engine.estimator, "abstract_estimator")
 
     @unittest.skipUnless(insightface, "insightface package is not installed")
@@ -146,10 +147,24 @@ class TestFaceEngine(TestCase):
         # antispoof is opt-in regardless of installed backends
         self.assertEqual(self.test_engine.antispoof, "abstract_antispoof")
 
-    def test_setter_antispoof_with_not_existing_model(self):
-        logging.disable(logging.WARNING)
-        self.test_engine.antispoof = "my_antispoof"
+    def test_setter_antispoof_with_not_existing_model_raises(self):
+        with self.assertRaises(ModelNotFoundError):
+            self.test_engine.antispoof = "my_antispoof"
         self.assertEqual(self.test_engine.antispoof, "abstract_antispoof")
+
+    def test_unregistered_in_tree_model_names_missing_backend(self):
+        # simulate an install where minifasnet's backend failed to import
+        from unittest import mock
+
+        from face_engine import core
+
+        with mock.patch.dict(core._models):
+            core._models.pop("minifasnet", None)
+            with self.assertRaises(ModelNotFoundError) as context:
+                core._resolve("minifasnet", (), "antispoof")
+        # the hint names the missing dependency, not a module import
+        self.assertIn("onnxruntime", str(context.exception))
+        self.assertNotIn("imported", str(context.exception))
 
     def test_check_liveness_with_abstract_raises(self):
         with self.assertRaises(NotImplementedError):
@@ -178,6 +193,59 @@ class TestFaceEngine(TestCase):
         scores = engine.check_liveness(self.family)
         self.assertGreater(len(scores), 1)
         self.assertTrue(all(0.0 <= s <= 1.0 for s in scores))
+
+    def test_compare_identical_embeddings(self):
+        embedding = np.array([0.5, -0.25, 0.75])
+        self.assertAlmostEqual(self.test_engine.compare(embedding, embedding), 1.0)
+
+    def test_compare_orthogonal_embeddings(self):
+        source = np.array([1.0, 0.0])
+        target = np.array([0.0, 1.0])
+        self.assertAlmostEqual(self.test_engine.compare(source, target), 0.0)
+
+    def test_compare_opposite_embeddings(self):
+        embedding = np.array([0.5, -0.25, 0.75])
+        self.assertAlmostEqual(self.test_engine.compare(embedding, -embedding), -1.0)
+
+    def test_compare_zero_vector_scores_zero(self):
+        source = np.zeros(3)
+        target = np.array([1.0, 2.0, 3.0])
+        self.assertEqual(self.test_engine.compare(source, target), 0.0)
+
+    def test_compare_accepts_single_row_matrices(self):
+        # compute_embeddings returns (n_faces, dim); a single-face row
+        # must be comparable without an explicit squeeze
+        source = np.array([[1.0, 2.0, 3.0]])
+        target = np.array([1.0, 2.0, 3.0])
+        self.assertAlmostEqual(self.test_engine.compare(source, target), 1.0)
+
+    def test_compare_returns_python_float(self):
+        source = np.array([1.0, 2.0], dtype=np.float32)
+        target = np.array([2.0, 1.0], dtype=np.float32)
+        self.assertIsInstance(self.test_engine.compare(source, target), float)
+
+    def _assert_same_face_scores_higher(self, engine):
+        image1 = imread(self.bubbles1)
+        bbs1, extra1 = engine.find_faces(image1, limit=1)
+        same1 = engine.compute_embeddings(image1, bbs1, **extra1)[0]
+        image2 = imread(self.bubbles2)
+        bbs2, extra2 = engine.find_faces(image2, limit=1)
+        same2 = engine.compute_embeddings(image2, bbs2, **extra2)[0]
+        image3 = imread(self.drive)
+        bbs3, extra3 = engine.find_faces(image3, limit=1)
+        other = engine.compute_embeddings(image3, bbs3, **extra3)[0]
+        same_score = engine.compare(same1, same2)
+        other_score = engine.compare(same1, other)
+        self.assertGreater(same_score, other_score)
+
+    @unittest.skipUnless(dlib, "dlib package is not installed")
+    def test_compare_same_face_scores_higher_dlib(self):
+        self._assert_same_face_scores_higher(self.dlib_engine)
+
+    @unittest.skipUnless(insightface, "insightface package is not installed")
+    def test_compare_same_face_scores_higher_insightface(self):
+        engine = FaceEngine(detector="scrfd", embedder="arcface")
+        self._assert_same_face_scores_higher(engine)
 
     @unittest.skipUnless(dlib, "dlib package is not installed")
     def test_fit_bubbles(self):

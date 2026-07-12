@@ -58,6 +58,10 @@ def imread(uri, mode=None):
         data = _download_url(uri)
         uri = io.BytesIO(data)
 
+    # raw image bytes: PIL treats a bare bytes object as a file path
+    if isinstance(uri, bytes):
+        uri = io.BytesIO(uri)
+
     image = Image.open(uri)
     if mode:
         image = image.convert(mode)

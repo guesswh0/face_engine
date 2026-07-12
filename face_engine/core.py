@@ -8,8 +8,8 @@ import os
 
 import numpy as np
 
-from . import __version__, logger
-from .exceptions import FaceNotFoundError
+from . import __version__
+from .exceptions import FaceNotFoundError, ModelNotFoundError
 from .models import _models
 from .tools import imread
 
@@ -20,10 +20,29 @@ _ESTIMATOR_DEFAULTS = ("basic",)
 # antispoof is opt-in: the default is the abstract no-op model
 _ANTISPOOF_DEFAULTS = ()
 
+# in-tree optional models: absence from the registry means the backend
+# dependency failed to import (tools.import_module swallows it), not that
+# a plugin-module import was forgotten
+_OPTIONAL_BACKENDS = {
+    "scrfd": "insightface",
+    "scrfd_antelopev2": "insightface",
+    "retina_face": "insightface",
+    "arcface": "insightface",
+    "arcface_antelopev2": "insightface",
+    "hog": "dlib",
+    "mmod": "dlib",
+    "resnet": "dlib",
+    "minifasnet": "onnxruntime",
+}
+
 
 def _resolve(name: Optional[str], defaults: Tuple[str, ...], kind: str) -> str:
     """Resolve model name to a registered one, with installed-backend
-    fallbacks for empty names and abstract fallback for unknown names."""
+    fallbacks for empty names.
+
+    Explicit unknown names raise :class:`~.exceptions.ModelNotFoundError`
+    (since 3.2; previously they warned and fell back to the abstract no-op).
+    """
 
     if not name:
         for candidate in defaults:
@@ -31,8 +50,17 @@ def _resolve(name: Optional[str], defaults: Tuple[str, ...], kind: str) -> str:
                 return candidate
         return "abstract_" + kind
     if name not in _models:
-        logger.warning("%s model '%s' not found!", kind.capitalize(), name)
-        return "abstract_" + kind
+        if name in _OPTIONAL_BACKENDS:
+            raise ModelNotFoundError(
+                "%s model '%s' is not registered because its backend "
+                "dependency '%s' is not installed"
+                % (kind.capitalize(), name, _OPTIONAL_BACKENDS[name])
+            )
+        raise ModelNotFoundError(
+            "%s model '%s' is not registered; make sure the module "
+            "providing it is imported. Registered models: %s"
+            % (kind.capitalize(), name, sorted(_models))
+        )
     return name
 
 
@@ -61,6 +89,8 @@ def load_engine(filename: str) -> "FaceEngine":
     :rtype: :class:`.FaceEngine`
 
     :raises RuntimeError: on legacy (pre-3.0) pickle files
+    :raises ModelNotFoundError: when the file names a model that is not
+        registered (e.g. its plugin module is not imported)
     """
 
     with open(filename, "rb") as file:
@@ -498,3 +528,31 @@ class FaceEngine:
 
         embeddings = self._embedder.compute_embeddings(image, bounding_boxes, **kwargs)
         return embeddings
+
+    def compare(self, source: np.ndarray, target: np.ndarray) -> float:
+        """Compare two face embeddings by cosine similarity.
+
+        The 1:1 verification primitive: returns the raw similarity score
+        in ``[-1, 1]`` (1 — same direction, 0 — orthogonal, -1 — opposite;
+        0 also for zero-norm inputs). Both embeddings must come from the
+        same embedder model. Accept/reject thresholding is left to the
+        caller and should be calibrated per embedder.
+
+        :param source: embedding vector with shape (embedding_dim,)
+            or (1, embedding_dim)
+        :type source: numpy.ndarray
+
+        :param target: embedding vector with shape (embedding_dim,)
+            or (1, embedding_dim)
+        :type target: numpy.ndarray
+
+        :returns: cosine similarity score
+        :rtype: float
+        """
+
+        source = np.asarray(source, dtype=np.float64).ravel()
+        target = np.asarray(target, dtype=np.float64).ravel()
+        denominator = float(np.linalg.norm(source) * np.linalg.norm(target))
+        if denominator == 0.0:
+            return 0.0
+        return float(np.dot(source, target) / denominator)

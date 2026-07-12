@@ -8,6 +8,7 @@ import numpy as np
 from tests import TestCase, dlib, insightface
 
 from face_engine import FaceEngine, load_engine
+from face_engine.exceptions import ModelNotFoundError
 from face_engine.models.basic_estimator import BasicEstimator
 
 
@@ -84,6 +85,17 @@ class TestFaceEnginePersistence(TestCase):
         restored_bbs, restored_class_names = engine.make_prediction(self.bubbles2)
         np.testing.assert_array_equal(bbs, restored_bbs)
         self.assertEqual(class_names, restored_class_names)
+
+    def test_load_engine_unregistered_model_raises(self):
+        self.test_engine.save(self.filename)
+        with open(self.filename) as file:
+            data = json.load(file)
+        # e.g. a plugin model whose module is not imported on this install
+        data["detector"] = "unregistered_plugin_detector"
+        with open(self.filename, "w") as file:
+            json.dump(data, file)
+        with self.assertRaises(ModelNotFoundError):
+            load_engine(self.filename)
 
     def test_load_engine_legacy_pickle_raises(self):
         with open("test_engine.p", "wb") as file:
