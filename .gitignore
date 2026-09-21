@@ -9,3 +9,6 @@ build/
 # local AI assistant notes
 CLAUDE.md
 .claude/
+
+# virtualenvs
+.venv/
