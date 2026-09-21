@@ -17,6 +17,13 @@ from face_engine.models._onnx import _providers
 _PACK_URL = "https://github.com/deepinsight/insightface/releases/download/v0.7/{}.zip"
 
 
+def _to_bgr(image):
+    # insightface's onnx wrappers swap channels on the assumption that the
+    # input is cv2's bgr; engine images are rgb, so without this flip the
+    # networks see the wrong order
+    return np.ascontiguousarray(image[..., ::-1])
+
+
 def _fetch_pack(pack, filename):
     """Fetch insightface model pack and return path to the model file."""
     extract_dir = os.path.join(RESOURCES, "models", pack)
@@ -37,6 +44,9 @@ class SCRFDDetector(Detector, name="scrfd", aliases=("retina_face",)):
     .. note::
         * registered as ``scrfd``; the pre-3.0 name ``retina_face`` is kept
           as a deprecated alias.
+        * the engine's RGB image is converted to BGR before the model,
+          as insightface's own pipeline does (since 3.3; earlier versions
+          ran the detector on swapped channels).
         * model weights are licensed for non-commercial research
           purposes only.
 
@@ -54,7 +64,7 @@ class SCRFDDetector(Detector, name="scrfd", aliases=("retina_face",)):
         self._detector.prepare(ctx_id=0, input_size=(640, 640), det_thresh=0.5)
 
     def detect(self, image):
-        bbs, kpss = self._detector.detect(image)
+        bbs, kpss = self._detector.detect(_to_bgr(image))
         n_det = bbs.shape[0]
         if n_det < 1:
             raise FaceNotFoundError
@@ -84,6 +94,10 @@ class ArcFaceEmbedder(Embedder, name="arcface", dim=512):
     .. note::
         * requires ``kpss`` face keypoints from a SCRFD detector for
           face alignment.
+        * the engine's RGB image is converted to BGR before the model,
+          as insightface's own pipeline does (since 3.3; embeddings from
+          earlier versions were computed on swapped channels and live in
+          a different space).
         * model weights are licensed for non-commercial research
           purposes only.
 
@@ -105,13 +119,14 @@ class ArcFaceEmbedder(Embedder, name="arcface", dim=512):
             "kpss" in kwargs
         ), "kpss is not in kwargs, probably using wrong detector model"
         kpss = kwargs.get("kpss")
+        bgr = _to_bgr(image)
 
         embeddings = []
         with warnings.catch_warnings():
             # insightface face_align uses a deprecated scikit-image api,
             warnings.simplefilter("ignore", FutureWarning)
             for bb, kps in zip(bounding_boxes, kpss):
-                aimg = face_align.norm_crop(image, kps)
+                aimg = face_align.norm_crop(bgr, kps)
                 embedding = self._embedder.get_feat(aimg).flatten()
                 embeddings.append(embedding / np.linalg.norm(embedding))
         return np.array(embeddings)

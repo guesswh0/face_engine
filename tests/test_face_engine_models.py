@@ -72,6 +72,16 @@ class TestSCRFDDetector(TestDetector):
     def setUp(self):
         self.detector = SCRFDDetector()
 
+    def test_runs_the_model_on_bgr(self):
+        # insightface's own pipeline feeds cv2's bgr, so detecting the
+        # engine's rgb image must equal insightface run on the flipped one
+        image = imread(self.bubbles1)
+        bbs, extra = self.detector.detect(image)
+        bgr = np.ascontiguousarray(image[..., ::-1])
+        raw_bbs, raw_kpss = self.detector._detector.detect(bgr)
+        np.testing.assert_allclose(bbs, raw_bbs[:, :4])
+        np.testing.assert_allclose(extra["kpss"], raw_kpss)
+
 
 @unittest.skipUnless(insightface and ANTELOPE, "antelopev2 tests are not enabled")
 class TestSCRFDAntelopeV2Detector(TestDetector):
@@ -149,6 +159,18 @@ class TestArcFaceEmbedder(TestInsightFaceEmbedder):
         super().setUp()
         self.detector = SCRFDDetector()
         self.embedder = ArcFaceEmbedder()
+
+    def test_runs_the_model_on_bgr(self):
+        # the embedding of the engine's rgb image must equal insightface's
+        # own get_feat on the crop taken from the bgr image
+        from insightface.utils import face_align
+
+        bbs, extra = self.detector.detect(self.image)
+        embeddings = self.embedder.compute_embeddings(self.image, bbs, **extra)
+        bgr = np.ascontiguousarray(self.image[..., ::-1])
+        crop = face_align.norm_crop(bgr, extra["kpss"][0])
+        raw = self.embedder._embedder.get_feat(crop).flatten()
+        np.testing.assert_allclose(embeddings[0], raw / np.linalg.norm(raw), atol=1e-5)
 
 
 @unittest.skipUnless(insightface and ANTELOPE, "antelopev2 tests are not enabled")
